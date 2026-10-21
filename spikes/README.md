@@ -49,4 +49,4 @@ The code-review skill found ten points on the first version, all fixed: every re
 
 ## How to run the device checks
 
-Once GitHub Pages is on (Settings, Pages, Source: GitHub Actions), the pages are at the repository's Pages address under `s1/`, `s3/` and `s4/`. Each has one button and a "Copy the result" button. Paste the result into the thread. The results hold the browser name and timings only, no address.
+Once GitHub Pages is on (Settings, Pages, Source: GitHub Actions), the pages are at https://linecheck.avd-ops.dev/ under `s1/`, `s3/` and `s4/` (a fork gets its own `github.io` address). Each has one button and a "Copy the result" button. Paste the result into the thread. The results hold the browser name and timings only, no address.

@@ -1,0 +1,20 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/2 301 
+server: GitHub.com
+content-type: text/html
+location: http://linecheck.avd-ops.dev/s4/
+x-github-request-id: F940:3DEA4D:217A75:246B39:6AD91BE9
+x-github-edge-region: iad
+accept-ranges: bytes
+age: 0
+date: Wed, 21 Oct 2026 20:09:13 GMT
+via: 1.1 varnish
+x-served-by: cache-iad-khef600047-IAD
+x-cache: MISS
+x-cache-hits: 0
+x-timer: S1792613353.371321,VS0,VE13
+vary: Accept-Encoding
+x-fastly-request-id: e1c373cf6cd48a3c4c5fb01017f0a8cd9412e850
+content-length: 162
+

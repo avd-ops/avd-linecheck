@@ -37,9 +37,35 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # What visitors get must be what we built: a proxy or CDN in front of Pages can inject scripts or
+  # reporting endpoints that break "nothing leaves the browser" (spec L5, L7).
+  served:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Served pages match the repo
+        env:
+          SITE: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          SITE="${SITE%/}"
+          sleep 30
+          fail=0
+          for page in index.html s1/index.html s3/index.html s4/index.html; do
+            path="${page%index.html}"
+            echo "Checking $SITE/$path"
+            curl -sSL --max-time 30 -D headers.txt -o served.html "$SITE/$path"
+            if ! cmp -s served.html "spikes/$page"; then echo "::error::$SITE/$path differs from spikes/$page (something in front of Pages changed it)"; diff <(cat "spikes/$page") served.html | head -20; fail=1; fi
+            if grep -qiE '^(report-to|nel|cf-ray):' headers.txt; then echo "::error::$SITE/$path is served through a proxy that adds its own reporting (switch the DNS record to DNS only)"; grep -iE '^(server|report-to|nel|cf-ray):' headers.txt; fail=1; fi
+          done
+          exit $fail
