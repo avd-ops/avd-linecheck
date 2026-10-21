@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- avd-linecheck spike S1. Personal project, research and learning only, not for production, as is. Not affiliated with the author's employer, Liquidware or Microsoft. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://login.microsoftonline.com https://windows.cloud.microsoft; base-uri 'none'; form-action 'none'">
+<title>Round trip sample</title>
+<link rel="stylesheet" href="../spike.css">
+<script src="../common.js" defer></script>
+<script src="s1.js" defer></script>
+</head>
+<body>
+<main>
+<p class="notice">Personal research project, not for production, no warranty. Not affiliated with the author's employer, Liquidware or Microsoft. This page sends small requests to its own site and to two Microsoft sign-in hosts, and sends no data.</p>
+<h1>Spike S1: how close is a browser sample to a real round trip?</h1>
+<p>On the same device and network, press the button, then run the comparison below and paste both into the thread. Do it on three networks (home Wi-Fi, cellular, and one more if you can).</p>
+<button id="run" type="button">Take the sample</button>
+<button id="copy" type="button" disabled>Copy the result</button>
+<pre id="out" aria-live="polite">Not run yet.</pre>
+<h2>The comparison</h2>
+<p>Windows (Command Prompt) or macOS (Terminal): <code>ping login.microsoftonline.com</code>. If ping gets no replies (some networks block it), say so; the browser number then stands alone as an upper bound.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- avd-linecheck spike S4. Personal project, research and learning only, not for production, as is. Not affiliated with the author's employer, Liquidware or Microsoft. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Download sufficiency</title>
+<link rel="stylesheet" href="../spike.css">
+<script src="../common.js" defer></script>
+<script src="s4.js" defer></script>
+</head>
+<body>
+<main>
+<p class="notice">Personal research project, not for production, no warranty. Not affiliated with the author's employer, Liquidware or Microsoft. This page downloads a test file from its own site five times (40 MiB in all) and sends nothing anywhere.</p>
+<h1>Spike S4: is an 8 MiB file from GitHub Pages a steady reading?</h1>
+<p>Run it twice: once right after opening the page (cold) and once a minute later (warm). Then copy the result into the thread. On a phone, try it on Wi-Fi and on cellular.</p>
+<button id="run" type="button">Run five downloads</button>
+<button id="copy" type="button" disabled>Copy the result</button>
+<pre id="out" aria-live="polite">Not run yet.</pre>
+</main>
+</body>
+</html>

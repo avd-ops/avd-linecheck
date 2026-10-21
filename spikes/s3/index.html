@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- avd-linecheck spike S3. Personal project, research and learning only, not for production, as is. Not affiliated with the author's employer, Liquidware or Microsoft. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self'; media-src blob:; base-uri 'none'; form-action 'none'">
+<title>Browser capabilities</title>
+<link rel="stylesheet" href="../spike.css">
+<script src="../common.js" defer></script>
+<script src="s3.js" defer></script>
+</head>
+<body>
+<main>
+<p class="notice">Personal research project, not for production, no warranty. Not affiliated with the author's employer, Liquidware or Microsoft. Nothing on this page leaves your browser.</p>
+<h1>Spike S3: what this browser can do</h1>
+<p>Press the button, then copy the result into the thread. It records timer precision, what WebRTC statistics expose, and whether screen capture and recording are supported. It makes no network request and asks for no permission; the screen capture check only looks for the feature.</p>
+<button id="run" type="button">Run the checks</button>
+<button id="copy" type="button" disabled>Copy the result</button>
+<pre id="out" aria-live="polite">Not run yet.</pre>
+</main>
+</body>
+</html>

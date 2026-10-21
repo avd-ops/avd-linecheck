@@ -27,7 +27,8 @@ A one-button network check for people who work on a virtual desktop. Open a link
 
 ```text
 docs/spec.md                  the design (moved here from avd-ops)
-tests/                        node --test: repo foundations (notice, license, links, leak patterns)
+spikes/                       throwaway pages for the spikes in spec section 13, published to GitHub Pages
+tests/                        node --test: repo foundations (notice, license, links, leak patterns), spike page rules
 .github/workflows/ci.yml      runs the tests on every pull request
 ```
 

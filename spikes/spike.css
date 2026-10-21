@@ -1,0 +1,9 @@
+/* Plain styles for the spike pages only; the real page uses the avd-ops design system. */
+:root { color-scheme: light dark; --bg: #ffffff; --fg: #1a1a1a; --muted: #555555; --line: #d0d0d0; }
+@media (prefers-color-scheme: dark) { :root { --bg: #121212; --fg: #ececec; --muted: #b0b0b0; --line: #3a3a3a; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 44rem; margin: 0 auto; padding: 16px; }
+.notice { color: var(--muted); font-size: 0.875rem; border-left: 3px solid var(--line); padding-left: 12px; }
+button { min-height: 44px; padding: 0 16px; margin: 4px 8px 4px 0; font: inherit; }
+pre { white-space: pre-wrap; word-break: break-word; border: 1px solid var(--line); padding: 12px; font-size: 0.8125rem; }
+code { word-break: break-all; }
