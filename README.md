@@ -39,7 +39,7 @@ Each one is linked and described in our own words; licenses are what the project
 
 - **[avd-landing-zone](https://github.com/avd-ops/avd-landing-zone)** (MIT, same family): its deployment portal's browser latency test (warm-up request, timed `no-cors` fetches, median) and reachability probe, with their honest-limits wording, are the starting point for this engine (`site/portal/portal-page.js` and decisions 0003 and 0014 at commit `68ffda5`).
 - **[@cloudflare/speedtest](https://github.com/cloudflare/speedtest)**: the loaded-latency method.
-- **[LibreSpeed](https://github.com/librespeed/speedtest)**: the jitter definition (the method only; no code).
+- **[LibreSpeed](https://github.com/librespeed/speedtest)**: the separate stability test idea, and its smoothed jitter as the comparison for our median-based one (ideas only; no code).
 - **Microsoft Learn**: the required endpoints, round-trip guidance, RDP Shortpath, Windows App and Teams log locations this tool cites, each at a pinned version through [avd-assess](https://github.com/avd-ops/avd-assess).
 
 ## Contributing

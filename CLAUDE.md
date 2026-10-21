@@ -21,4 +21,4 @@ node --test "tests/*.test.mjs"
 - **Liquidware is the only partner named.** Other vendors appear only as prior art. No Nerdio and no HCL (Terraform, Packer) here.
 - **Personal project, not for production, as is, not affiliated with the author's employer, Liquidware or Microsoft.** The README warning, the LICENSE and the notice at the top of every entry point stay (a test checks the README).
 - **American English** in docs, output and comments. Scripts stay ASCII.
-- **Knowledge capture:** this repo has no knowledge base. Record what you learn in avd-ops `docs/knowledge/` (the roadmap page holds this tool's findings) and link it from the PR as `KB: <link>`, or say `No KB entry: <reason>`.
+- **Knowledge capture:** this repo has no knowledge base. Record what you learn in avd-second-brain `docs/knowledge/` (avd-ops AGENTS.md: build lessons for an AVD repo go there) and link it from the PR as `KB: <link>`, or say `No KB entry: <reason>`.

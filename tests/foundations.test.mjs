@@ -16,7 +16,13 @@ function files(dir = root, out = []) {
   }
   return out;
 }
-const textFiles = files().filter((p) => ['.md', '.mjs', '.js', '.json', '.yml', '.html', '.css', '.ps1', '.psm1'].includes(extname(p)));
+// Every file is scanned except known binary types, so a new extension can't slip past the leak checks.
+const binary = ['.bin', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.zip'];
+const textFiles = files().filter((p) => !binary.includes(extname(p).toLowerCase()));
+
+// GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens.
+const anchors = (md) => new Set([...md.replace(/```[\s\S]*?```/g, '').matchAll(/^#{1,6}\s+(.+)$/gm)]
+  .map(([, h]) => h.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s/g, '-')));
 
 test('README keeps the research-only warning', () => {
   const readme = read('README.md');
@@ -34,9 +40,13 @@ test('every relative Markdown link resolves', () => {
   for (const p of textFiles.filter((f) => f.endsWith('.md'))) {
     const body = readFileSync(p, 'utf8').replace(/```[\s\S]*?```/g, '');
     for (const [, target] of body.matchAll(/\]\(([^)\s]+)\)/g)) {
-      if (/^(https?:|mailto:|#)/.test(target)) continue;
-      const path = decodeURIComponent(target.split('#')[0]);
-      assert.ok(existsSync(resolve(dirname(p), path)), `${p.slice(root.length + 1)} links to missing ${target}`);
+      if (/^(https?:|mailto:)/.test(target)) continue;
+      const [file, frag] = target.split('#');
+      const dest = file ? resolve(dirname(p), decodeURIComponent(file)) : p;
+      assert.ok(existsSync(dest), `${p.slice(root.length + 1)} links to missing ${target}`);
+      if (frag && dest.endsWith('.md')) {
+        assert.ok(anchors(readFileSync(dest, 'utf8')).has(frag), `${p.slice(root.length + 1)} links to missing anchor ${target}`);
+      }
     }
   }
 });
