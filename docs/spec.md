@@ -302,7 +302,7 @@ Decided (Nick, 2026-10-21): **avd-linecheck**, the recommended name with the fam
 | dialtone | "Do I have a dial tone?"; warm, memorable | Dialpad's open-source design system is named Dialtone (`dialpad/dialtone`, `@dialpad/dialtone-css`) |
 | lastmile | Names the segment the tool measures | Agora's "last-mile probe" API; the last mile is a crowded term |
 
-Repo `avd-ops/avd-linecheck`, page at **`linecheck.avd-ops.dev`** (Nick, 2026-10-21), a GitHub Pages custom domain whose DNS record is DNS only, never proxied: a proxy in front of Pages can inject its own scripts or reporting endpoints, which breaks L5 and L7, and the Pages workflow checks after every deploy that the served pages are byte for byte what was built. Not `avd-ops.party`, which stays the demo environment's domain (18.4). A fork keeps the default `<owner>.github.io/avd-linecheck/` address.
+Repo `avd-ops/avd-linecheck`, page at **`linecheck.avd-ops.dev`** (Nick, 2026-10-21), a GitHub Pages custom domain whose DNS record is DNS only, never proxied: a proxy in front of Pages can inject its own scripts or reporting endpoints, which breaks L5 and L7, and the `served` workflow checks after every deploy and once a day that every served file equals the repo's copy (the generated test file by size), that plain HTTP only redirects to HTTPS, and that no response carries a proxy's reporting headers. It cannot see what a network between a user and Pages does; HTTPS is what covers that. Not `avd-ops.party`, which stays the demo environment's domain (18.4). A fork keeps the default `<owner>.github.io/avd-linecheck/` address.
 
 ### 12.4 Repository layout
 
