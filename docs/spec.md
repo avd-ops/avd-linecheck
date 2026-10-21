@@ -222,7 +222,7 @@ The export (JSON, and the summary rendered from it) holds: schema version, tool 
 
 It reveals one thing a helpdesk should know about: the region ranking and the browser's platform locate the user to roughly a city. That is fine in a ticket and a disclosure in a public issue, so the share panel's default keeps the top three regions only and a "full" toggle keeps all of them; the summary text says which it is.
 
-It never holds: an IP address (the WebRTC reflexive address is compared and dropped; `no-cors` responses carry none), a hostname of the user's device, a user name or UPN, a tenant name or ID, workspace or host pool IDs, geolocation (the page never asks for it), a full user agent string, or anything typed into the page. The page has no free-text field. A test feeds the exporter fixtures with every one of those values present in the raw measurements and asserts they are absent from the output; a redaction pattern list in the repo mirrors avd-landing-zone's portal report redaction (decision 0008) for the day a free-text field appears.
+It never holds: an IP address (the WebRTC reflexive address is compared and dropped; `no-cors` responses carry none), a hostname of the user's device, a user name or UPN, a tenant name or ID, workspace or host pool IDs, geolocation (the page never asks for it), a full user agent string, or anything typed into the page. The page's one free-text field, the comment box of section 17.6, writes only to the local log bundle and never to the export, the summary or the paste view; the rating and symptom chips of 17.6 are enumerated values and appear in the export and the summary. A test feeds the exporter fixtures with every one of those values present in the raw measurements and asserts they are absent from the output; a redaction pattern list in the repo mirrors avd-landing-zone's portal report redaction (decision 0008) for the day free text ever reaches a shared artifact.
 
 **What an admin can still leak.** A custom pack is the one place a tenant name can enter: a private feed host or a company proxy name typed into `hosts`. The pack validator warns on hosts outside the suffixes the AVD pack cites (`microsoft.com`, `microsoftonline.com`, `cloud.microsoft`, `windows.net`, `office.com`, `aka.ms`; the list lives in the schema), and the export marks results from such a pack `custom: true` so a helpdesk knows the file names the organization's own hosts before pasting it anywhere public. Results shared in a public issue should come from the shipped packs only; the README says so.
 
@@ -337,7 +337,7 @@ No build step for the page itself: plain HTML, CSS and JavaScript, as the portal
 |---|---|---|
 | **v0, static page** | The run (section 5) with the generic pack: reachability of the page's own origin and any hosts in the pack, region ranking, download sufficiency with loaded latency, jitter and stalls, verdict, JSON and summary export, paste-a-result, phone layout, the shell | Spikes S1 to S4; the repo; the design system at a tag |
 | **v1, AVD checks** | The AVD pack from the shared probe map (Q6), cited thresholds, `?region=` from a helpdesk link, the Shortpath facts and the Windows `avdnettest.exe` pointer, the intake-shaped export (6.5); the landing zone's portal links the page from its region and verify steps | The probe map (Q6); avd-current-state #28 aligned; Q5 answered |
-| **Log bundle** | The device and in-session collector, zip to Downloads, manifest, no upload (section 17) | Q11; Pester against a synthetic profile tree |
+| **Log bundle** | The device and in-session collector, zip to Downloads, manifest, no upload, signed release (section 17) | Q11 and code signing; spike S5; Pester against a synthetic profile tree, in Constrained Language Mode too |
 | **v2, server probe**, in pieces (v2a to v2d) | Echo with full timing and upload on a Worker first; then STUN and TURN with loss and NAT type; then WebTransport datagrams; Cloudflare Pages with a real CSP; Globalping outside-in last, if at all | A cost estimate and Nick's exact go for each piece that runs; Q4, Q7, Q9 |
 
 Parked, not planned: history and trends (that is a monitoring product), a native app, anything that signs in.
@@ -348,14 +348,15 @@ Parked, not planned: history and trends (that is a monitoring product), a native
 |---|---|---|
 | S1 | How far is the HTTPS sample from a real round trip, and can `@cloudflare/speedtest` run against our own origin with zero requests to Cloudflare and no result upload? Read every outside license file at a pinned release | A local page beside `avdnettest.exe` or a ping, three networks; the library's source at a pinned release with the network panel open |
 | S2 | Which `*.wvd.microsoft.com` names answer today, and with what? | `curl -sI` from a laptop, not from Azure, recorded with the date |
-| S3 | Timer granularity and `getStats()` exposure per engine (Chrome, Firefox, Safari on desktop and iPhone) | A local page that records `performance.now()` deltas and ICE candidate fields |
+| S3 | Timer granularity, `getStats()` exposure and `getDisplayMedia` and `MediaRecorder` support per engine (Chrome, Firefox, Safari on desktop and phones) | A local page that records `performance.now()` deltas and ICE candidate fields |
 | S4 | Does an 8 MiB blob from GitHub Pages give a stable sufficiency reading on phone Safari and desktop browsers, cold and warm edge? | A test page on a Pages branch of a scratch repo |
+| S5 | What can a standard user read for the log bundle (event channels, CIM classes, counter sets, `powercfg` reports), and how does zipping behave on open log files? | A standard account on Windows 11 and on a multi-session host (section 17.8) |
 
 None of these touches a tenant or costs money.
 
 ## 14. Red team
 
-Reviewed by Fable (claude-fable-5-1) on 2026-10-21 before this version. Findings and what changed: section 14.1 is filled in from the review. Section 17 (the log bundle, user-added context, inventory and health) was added after the review and has not been red-teamed yet.
+Reviewed by Fable (claude-fable-5-1) on 2026-10-21 before this version. Findings and what changed: section 14.1 is filled in from the review. Section 17 (the log bundle, user-added context, inventory and health) was added after the review and red-teamed separately (17.9).
 
 ### 14.1 Findings folded in
 
@@ -400,7 +401,7 @@ The avd-linecheck foundations review (2026-10-21, code-review skill) corrected f
 8. **The landing zone's portal**: link to the page from its region and verify steps and vendor the engine later (recommended), or keep its own copy forever (6.2).
 9. **v2 pieces.** Which of echo and sink (v2a), STUN and TURN (v2b), WebTransport (v2c) and Globalping outside-in (v2d) are worth their cost line, and in what order (section 10).
 10. **Go for the spikes.** They are offline or free; no tenant and no spend.
-11. **Log bundle** (section 17): Windows script for the device and the session first, with macOS and mobile pointed at Microsoft's in-app steps (recommended); before or after the page's v0; Downloads as the destination (recommended over Documents, which OneDrive may sync); whether to sign the script later, which needs a certificate and a cost line; and the user-added pieces (17.6: screenshot and recording in the page, comments only in the bundle, a picked rating that may go into the export) and the inventory and health fields (17.7).
+11. **Log bundle** (section 17): Windows script for the device and the session first, with macOS and mobile pointed at Microsoft's in-app steps (recommended); before or after the page's v0; Downloads as the destination (recommended over Documents, which OneDrive may sync); code signing, now a prerequisite for shipping the script at all (17.5), which needs a certificate, an identity and a cost line; and the user-added pieces (17.6: screenshot and recording in the page, comments only in the bundle, a picked rating that may go into the export) and the inventory and health fields (17.7).
 
 ## 16. Sources checked (2026-10-21)
 
@@ -412,69 +413,130 @@ Microsoft Learn (through avd-assess pins where a reference exists): required FQD
 
 ## 17. Log bundle: full log collection for an AVD issue (proposed)
 
-Nick, 2026-10-21: "needs to have full log collection for any avd related issue including teams and performance, not sure how we would send it but maybe just collection and zip to downloads/document?" Added after the red team in section 14; not yet reviewed.
+Nick, 2026-10-21: "needs to have full log collection for any avd related issue including teams and performance, not sure how we would send it but maybe just collection and zip to downloads/document?" Added after the red team in section 14, then red-teamed on its own by Fable the same day (17.9).
 
 ### 17.1 What a page can and cannot do
 
-A web page cannot read files, event logs or performance counters on the device (section 4.6 for the network side; the same sandbox applies to the file system). So the bundle is a **companion script**, not part of the page: the page offers it as a download from its own origin, shows its SHA-256 beside the link, and tells the user what it will collect before they run it. The network check stays the one-button part; the bundle is the "your helpdesk asked for logs" part.
+A web page cannot read files, event logs or performance counters on the device (section 4.6 for the network side; the same sandbox applies to the file system). So the bundle is a **companion script**, not part of the page. The network check stays the one-button part; the bundle is the "your helpdesk asked for logs" part. How the script reaches a device, and why the page never hands out a command to paste, is 17.5.
 
-### 17.2 Two places, two scripts
+Where it runs: **Windows only**, on the user's device and inside a Windows session host (AVD or a Windows 365 Cloud PC, the same in-session path). macOS, iOS and Android endpoints get Microsoft's in-app logging steps (`learn.microsoft.com/windows-app/troubleshoot-collect-logs`), and Linux thin clients and Windows 365 Link get nothing on the device side; the page says so as "not collected" (L2), and the in-session half still works for all of them. The web client gets its own "Capture logs" in the session toolbar, which the page links; the page itself cannot run inside the web client's session.
 
-An AVD problem leaves evidence on two machines, and the user can reach both:
+### 17.2 Two places, one script
 
-| Run on | How | Collects (each source cited, never a copied table) |
-|---|---|---|
-| **The user's own device** | Windows: a PowerShell script that runs in Windows PowerShell 5.1 with no modules and no admin rights. macOS, iOS, Android and the web client: the page shows Microsoft's own steps for that platform instead, because their Windows App logs are switched on inside the app (`learn.microsoft.com/windows-app/troubleshoot-collect-logs`) | Windows App logs (`%temp%\DiagOutputDir\Windows365\Logs`) and the older Remote Desktop client's (`%temp%\DiagOutputDir\RdClientAutoTrace`), copied with the app closed as Microsoft's steps say; Teams new VDI optimization (SlimCore) logs on the endpoint, both the older and the split Host and Framework paths, and the AppXDeployment-Server and AppxPackagingOM operational events the Teams troubleshooting page names (`learn.microsoft.com/microsoftteams/vdi-2-troubleshooting`, "Log collection" and "Connection error"); OS build, Windows App and plugin versions; a short performance sample (CPU, memory, network interface throughput and errors, Wi-Fi signal quality) taken while the user reproduces the problem; the latest avd-linecheck result JSON if one is in Downloads |
-| **Inside the remote session** | The same script, run by the user in their session (no admin). Admin-only extras (agent logs, all users' events) are a separate switch for the helpdesk | Teams logs: new Teams' log folder under its package, classic Teams' `logs.txt` (`learn.microsoft.com/azure/virtual-desktop/troubleshoot-teams`, "Collect Teams logs"), and a prompt to press Ctrl+Alt+Shift+1 first so Teams writes its own diagnostic zip to Downloads, which the script then picks up; `Vdi_debug.txt` and the "Microsoft Teams VDI" events; event logs from the last N hours for the channels AVD Insights collects (`learn.microsoft.com/azure/virtual-desktop/insights-glossary`, "Windows Event Logs": Application, System, TerminalServices RemoteConnectionManager and LocalSessionManager, FSLogix Operational and Admin), filtered to this user's session where the event carries one; a performance sample during the reproduction (processor, memory, disk, and the per-session RemoteFX and user input delay counters AVD Insights reads); FSLogix profile status |
+An AVD problem leaves evidence on two machines, and the user can reach both. Each row of `collector/sources.json` cites the Learn page and anchor it comes from and says whether it needs admin (yes, no, unknown); a source the script cannot read is recorded as "access denied", "not present" or "locked", never a failure of the run and never silently skipped.
 
-Microsoft's own collectors are prior art and the escalation path, not something to bundle: TSS (`.\TSS.ps1 -Scenario UEX_RDScli` and `UEX_RDSsrv`, `learn.microsoft.com/troubleshoot/windows-client/windows-tss/collect-data-analyze-troubleshoot-remote-desktop-services-scenarios`), which includes the Remote Desktop collector MSRD-Collect, is far broader, needs an elevated prompt and writes to `C:\MS_DATA`; its license is to be read before anything is reused (build-or-adopt: it is the best at its job but is not open source, so it is linked, never copied). Multimedia redirection has its own log capture in the browser extension, and Windows App on the web has "Capture logs" in the session toolbar; the page links both.
+| Run on | Collects |
+|---|---|
+| **The user's own device** | Windows App logs (`%temp%\DiagOutputDir\Windows365\Logs`, `learn.microsoft.com/windows-app/troubleshoot-collect-logs`); the retired Remote Desktop client's `RdClientAutoTrace` folder as legacy, best effort; Teams new VDI optimization (SlimCore) logs on the endpoint, both the older and the split Host and Framework paths, and the AppXDeployment-Server and AppxPackagingOM operational events (`learn.microsoft.com/microsoftteams/vdi-2-troubleshooting`, "Log collection" and "Connection error"); OS build, Windows App and plugin versions; a performance sample (17.7) while the user reproduces the problem; the latest avd-linecheck result JSON if one is in Downloads |
+| **Inside the remote session** (as the user, no admin) | New Teams logs (`%LOCALAPPDATA%\Packages\MSTeams_8wekyb3d8bbwe\LocalCache\Microsoft\MSTeams\Logs`, from the same Teams page); the file Teams writes when the user presses Ctrl+Alt+Shift+1, which the two Learn pages describe differently (a `PROD-WebLogs-*.zip` in the VDI page, an `MSTeams Diagnostics Log` text file in the older AVD page), so `sources.json` lists both patterns and the script takes only files newer than its own start; `Vdi_debug.txt` and the Teams VDI events in the Application log; event logs from the time window for the channels AVD Insights collects (`learn.microsoft.com/azure/virtual-desktop/insights-glossary`, "Windows Event Logs"); FSLogix profile status; the performance sample |
+| **Admin switch** (helpdesk, elevated) | Agent logs and every user's events on the host, which is the only path that claims a complete event picture |
+
+**A multi-session host is shared.** The Application, System and session manager logs on a pooled host carry other users' sign-in names, sessions and crashes, and most events carry no session ID at all, so they cannot be filtered to one user. A session-host bundle therefore contains other users' data by design, the consent screen says so, and the manifest records per channel whether it was read, denied or absent. Non-admin read access to the TerminalServices and FSLogix channels is not documented; spike S5 records it.
+
+Microsoft's own collectors are prior art and the escalation path. TSS (`.\TSS.ps1 -Scenario UEX_RDScli` and `UEX_RDSsrv`), which includes the Remote Desktop collector MSRD-Collect, is far broader, needs an elevated prompt and writes to `C:\MS_DATA`; its license allows use only to help Microsoft troubleshoot and forbids distribution (`learn.microsoft.com/troubleshoot/windows-client/windows-tss/introduction-to-troubleshootingscript-toolset-tss`), so it is linked, and nothing is copied from it, not even a source list. Multimedia redirection has its own log capture in the browser extension; the page links it.
 
 ### 17.3 Where the bundle goes, and how it is sent
 
-- **Written locally, never uploaded.** One zip in the user's Downloads folder, named `avd-linecheck-<device|session>-<yyyyMMdd-HHmm>.zip`, and the script opens File Explorer on it. Downloads, not Documents, because a redirected or OneDrive-synced Documents folder would upload it the moment it lands, and Teams already writes its own diagnostic zip to Downloads. Nothing in the script makes a network request (a test checks the script source for any web cmdlet or .NET web client).
+- **Written locally, never uploaded.** One zip in the user's Downloads folder, named `avd-linecheck-<device|session>-<yyyyMMdd-HHmm>.zip`, and the script opens File Explorer on it. Downloads, not Documents, because OneDrive Known Folder Move syncs Desktop, Documents and Pictures (with Screenshots and Camera Roll) but not Downloads (`learn.microsoft.com/troubleshoot/sharepoint/lists-and-libraries/determine-known-folder-move-eligibility`). The script resolves the real Downloads folder from the user's shell folder settings rather than assuming `%USERPROFILE%\Downloads`, warns when it is redirected to a network share or a synced path, and checks free space first: inside a session, Downloads usually sits in the FSLogix profile container, which a large zip can fill. Teams already writes its own diagnostic file there.
 - **Sending is the helpdesk's channel.** The user attaches the zip to their ticket or the place their helpdesk names. The tool never emails, uploads or posts it. A future "send" option, if ever, is the v2 server probe's problem and needs its own decision.
-- **A manifest first.** `manifest.json` at the top of the zip lists every file, its source path with the user profile folder replaced by `%USERPROFILE%`, its size and hash, what was skipped and why (not found, access denied, too big), the time window and the script version. A collection that found nothing says so instead of producing an empty zip (L2, L3).
-- **Bounded.** A time window (default the last 24 hours, `-Hours` to change), a size cap per source and for the whole zip (default 200 MB), and a performance sample of at most 5 minutes. Like the page, no loop mode.
+- **A manifest first.** `manifest.json` (written with an explicit `-Depth`, since `ConvertTo-Json` truncates at 2 by default) lists every file, its source path with the profile folder replaced by `%USERPROFILE%`, its size and hash, what was skipped and why (not found, access denied, locked, too big), the time window and the script version. A collection that found nothing says so instead of producing an empty zip (L2, L3).
+- **Staged, then zipped.** Logs are copied to a staging folder first, because `Compress-Archive` in Windows PowerShell 5.1 fails on files another process holds open, skips hidden files, reads each file into memory and stops at 2 GB per file (`learn.microsoft.com/powershell/module/microsoft.powershell.archive/compress-archive`). Windows App and Teams keep their logs open while running, so the script asks the user to close them where Microsoft's steps say to, and records any file still locked as "locked, skipped".
+- **Bounded.** A time window (default the last 24 hours, `-Hours` to change), a size cap per source and for the whole zip (default 200 MB), and a performance sample of at most 5 minutes. Budget, normal and worst case:
+
+| Step | Cap | Normal | Worst |
+|---|---|---|---|
+| Inventory and health | per class property allowlist | under 30 s | 2 min (CIM timeouts) |
+| Logs and events | 50 MB per source, 24 h window | under 1 min | 3 min |
+| Performance sample | 5 min, user stops it sooner | 1 to 5 min | 5 min |
+| Staging and zip | 200 MB total | under 1 min | 2 min |
+
+- **Retention.** The zip and the Teams file stay in Downloads until someone deletes them. The page's "for helpdesks" note says: open the manifest first, keep the zip in the ticket and do not forward it, delete it after the ticket closes; the script's last screen tells the user they can delete both once the ticket is done.
 
 ### 17.4 Privacy: the opposite of the network export
 
-The network export (section 8.3) holds no personal data. **Logs do**: user names, device and host names, IP addresses, tenant and session IDs, meeting titles in Teams logs, Wi-Fi network names. So the bundle is treated as private by design:
+The network export (section 8.3) holds no personal data. **The bundle does**, most of all in what the user adds:
 
-- The script shows the list of sources and asks before it starts; the page says plainly that the zip contains personal and organizational data and goes only to the user's own helpdesk, never into a public issue, a forum or this repo.
-- No best-effort scrubbing is claimed. Redacting free-form logs reliably is not possible, and a "redacted" label would invite exactly the public post that leaks. The manifest says "contains personal data: yes".
-- Wi-Fi: signal quality and band only, never the network name or the access point's address.
+1. **Screen recordings and screenshots**, which show whatever was on screen: chats, mail, notifications, documents.
+2. **Comments**, in the user's own words.
+3. **Logs**: user names, device and host names, IP addresses, tenant and session IDs, meeting titles in Teams logs, and, on a multi-session host, other users' events (17.2).
+4. **Inventory**: the installed-apps list and the hardware model.
+
+So the bundle is treated as private by design:
+
+- The script shows the list of sources, including "other users' events on this host" in a session, and asks before it starts; the page says plainly that the zip contains personal and organizational data and goes only to the user's own helpdesk, never into a public issue, a forum or this repo.
+- No scrubbing is offered. Redacting free-form logs reliably is not possible, and a "redacted" label would invite exactly the public post that leaks; `sos report`'s opt-in obfuscation (17.9) is the considered alternative, rejected for now. The manifest says "contains personal data: yes".
+- Inventory takes only the properties an allowlist in `sources.json` names for each class, and a Pester test fails on any other property. Never collected: the signed-in user name from `Win32_ComputerSystem`, serial and part numbers (BIOS, memory, disks), MAC addresses, Defender's computer ID, Wi-Fi network names and access point addresses (signal quality and band only).
 - This repo never receives a bundle: the issue template says so, and real bundles never become fixtures; tests use synthetic files.
 
-### 17.5 Running it on a managed device
+### 17.5 Getting the script onto a managed device
 
-Corporate devices often block unsigned scripts. The page gives one copyable command (`powershell -NoProfile -ExecutionPolicy Bypass -File <path>`), which changes the policy for that process only, and says that if the device still blocks it, the helpdesk has to run it or sign it. Signing the script with a family code-signing certificate is a cost and an identity question for later (Q11). The script refuses to run elevated unless the helpdesk passes the admin switch, so a user does not collect other users' data by accident.
+The page never asks a user to paste a command into PowerShell, and says so in those words. A "copy this `-ExecutionPolicy Bypass` command" step is exactly the pattern look-alike phishing pages use to get people to run scripts, and it does not even work where it is needed: execution policy is not a security boundary, and on devices with App Control for Business (WDAC) or AppLocker an unsigned script from Downloads runs in Constrained Language Mode or not at all, whatever `-ExecutionPolicy` says (`learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_language_modes`).
+
+So the bundle ships only as a **signed** script, which makes signing (Q11) a prerequisite, not a later nicety:
+
+- A GitHub Release with build provenance (`gh attestation`) and an Authenticode signature, its hash recorded in the README at a pinned commit. A hash shown beside a download link on the same origin proves nothing if the origin is compromised, so the page shows the release link and the signature check, not its own hash as evidence.
+- The helpdesk deploys it the way it deploys anything (Intune, Company Portal) or runs it for the user. The page explains this to the user and does not offer the file as a bare download.
+- **Written for Constrained Language Mode.** Cmdlets from Windows-shipped modules only (`Get-CimInstance`, `Get-WinEvent`, `Get-Counter`, `Copy-Item`, `Compress-Archive`, `Get-FileHash`, `ConvertTo-Json`); no `Add-Type`, no .NET method calls, no `New-Object` outside the allowed types, no classes, so it works in CLM even signed. CLM refuses to import a script file as a module across a trust boundary (`learn.microsoft.com/powershell/scripting/security/app-control/how-app-control-works`), so the release is one signed `.ps1` assembled from the tested module by a script whose output a test compares with the sources. CI runs PSScriptAnalyzer's `UseConstrainedLanguageMode` rule and a Pester pass with the language mode set to `ConstrainedLanguage`.
+- The script refuses to run elevated unless the helpdesk passes the admin switch, so a user does not collect other users' data by accident.
+- **No network calls.** A source test refuses every web cmdlet and alias (`Invoke-WebRequest`, `Invoke-RestMethod`, `iwr`, `curl`, `wget`), `Start-BitsTransfer`, `Test-NetConnection`, COM objects for HTTP, and any `-ComputerName` or `-CimSession` argument.
 
 ### 17.6 What the user adds: screenshots, a recording, comments and a rating
 
 Nick, 2026-10-21: "screenshot/screen record/comments/sentiment and system hardware/software inventory/health too if possible with open source/built in tooling/data". Everything here is built into the browser or Windows; nothing is installed and nothing is sent.
 
-- **Screenshot and screen recording, in the page.** A "Show what is happening" button uses the browser's own screen capture (`getDisplayMedia`, after a click, with the browser's picker and its sharing indicator) and `MediaRecorder`: one frame drawn to a canvas becomes a PNG, or up to 2 minutes become a WebM video. Run on the user's own device, it captures the Windows App window, which is what the user sees. The file is saved with an ordinary download, never uploaded, and the page shows it before saving so the user can discard it. Desktop browsers only: mobile browsers do not offer screen capture, so the page hides the button there and points to the phone's own screenshot. Steps Recorder (`psr.exe`) is not used: Microsoft deprecated it in November 2023 and recommends the Snipping Tool, Xbox Game Bar or Clipchamp for recording (`learn.microsoft.com/windows/whats-new/deprecated-features`); the page names the Snipping Tool as the fallback.
-- **Comments.** A text box, "What were you doing, and when did it start?", plus the time the problem happened. This is the page's first free-text field, so it gets the rules 8.3 reserved for that day: comments go only into the log bundle (`comments.txt`), never into the network export or the copied summary, and the redaction pattern list is applied before anything with a comment is shown in the paste view.
-- **How it feels (sentiment).** The user picks it: a five-point "how is your desktop today" scale and symptom chips (slow typing, frozen or blurry screen, Teams audio or video, disconnects, sign-in, printing, slow apps). Sentiment is never inferred from the comment by a model (family rule: a model never decides). The rating and the chips are enumerated values, so they may go into the network export and the summary, where a helpdesk can count them across tickets.
-- **The script picks them up.** When the collector runs, it offers a file dialog to add the screenshots, recordings and the comments file the user saved (it never searches the Pictures or Videos folders on its own) and lists them in the manifest.
+- **Screenshot and screen recording, in the page.** A "Show what is happening" button uses the browser's own screen capture (`getDisplayMedia`, after a click, with the browser's picker and its sharing indicator) and `MediaRecorder`. It asks for video only (`audio: false`) and suggests a window rather than the whole screen (`displaySurface: 'window'`), so a user can share just the Windows App window. One frame drawn to a canvas becomes a PNG; up to 2 minutes become a video in whatever container the browser records, chosen with `MediaRecorder.isTypeSupported` (Safari records MP4, Chromium and Firefox WebM) and named by the result. A review step says "this recorded your screen; check it before saving" and shows it, and the file is saved with an ordinary download, never uploaded. The button appears only where `getDisplayMedia` exists (feature detection, not a platform list: support on phones differs by browser and is changing; spike S3 records it); elsewhere the page points to the device's own screenshot. The page's `display-capture` permission needs no policy change, since its default allowlist is the page's own origin. Steps Recorder (`psr.exe`) is not used: Microsoft deprecated it in November 2023 and recommends the Snipping Tool, Xbox Game Bar or Clipchamp (`learn.microsoft.com/windows/whats-new/deprecated-features`). The page names the Snipping Tool as the fallback and says to save into Downloads, because the Snipping Tool autosaves to Pictures\Screenshots, which OneDrive may sync.
+- **Comments.** A text box, "What were you doing, and when did it start?", plus the time the problem happened. Comments go only into the log bundle (`comments.txt`), never into the network export, the copied summary or the paste view (section 8.3 is amended to match).
+- **How it feels (sentiment).** The user picks it: a five-point "how is your desktop today" scale and symptom chips (slow typing, frozen or blurry screen, Teams audio or video, disconnects, sign-in, printing, slow apps). Sentiment is never inferred from the comment by a model (family rule: a model never decides). The rating and the chips are enumerated values, so they go into the network export and the summary, where a helpdesk can count them across tickets.
+- **Accessible.** The rating is a radio group and the chips are checkboxes with labels, both keyboard operable; the recording controls and the review step announce their state to screen readers; the console script's prompts are plain text with numbered choices, and its file dialog is optional (a `-Add <path>` parameter does the same).
+- **The script picks them up.** It offers a file dialog to add the screenshots, recordings and the comments file the user saved (it never searches the Pictures or Videos folders on its own), warns when a picked file sits under a OneDrive path, and lists them in the manifest.
 
-### 17.7 Device inventory and health, built in
+### 17.7 Device inventory, health and performance, built in
 
-The collector records what the machine is and how healthy it looks, using only what Windows ships (CIM classes through `Get-CimInstance`, since WMIC was removed from Windows 11 24H2 on (`learn.microsoft.com/windows/whats-new/removed-features`), the Storage module and `powercfg`). On the device it describes the endpoint; inside the session it describes the session host.
+The collector records what the machine is and how healthy it looks, using only what Windows ships: CIM classes through `Get-CimInstance` (WMIC was removed from Windows 11 24H2 on, `learn.microsoft.com/windows/whats-new/removed-features`), the Storage module and `powercfg`. On the device it describes the endpoint; inside the session it describes the session host. Each row's property allowlist and admin need live in `sources.json`.
 
-| Area | Built-in source | What goes in |
-|---|---|---|
-| Hardware | `Win32_ComputerSystem`, `Win32_Processor`, `Win32_PhysicalMemory`, `Win32_VideoController`, `Win32_DesktopMonitor` and display settings, audio and camera devices from `Win32_PnPEntity` by class | Model, CPU, cores, memory, GPU and driver version, monitor count and resolution, headset and camera names and driver versions |
-| Software | `Win32_OperatingSystem`, `Get-HotFix`, the uninstall registry keys (names and versions only), Windows App, Teams and plugin versions | OS edition, build and last update; installed apps list; uptime and pending reboot |
-| Storage | `Get-PhysicalDisk` (`HealthStatus`: Healthy, Warning, Unhealthy, Unknown), `Get-Volume` | Disk health and free space |
-| Power | `powercfg /batteryreport` (HTML, laptops), `powercfg /getactivescheme` | Battery wear and the active power plan |
-| Stability | Reliability Monitor records (`Win32_ReliabilityRecords`), the performance sample of 17.2 | App crashes and hangs in the time window; CPU and memory peaks during the reproduction |
-| Security posture | `Get-MpComputerStatus` where Microsoft Defender is present | Protection on or off and signature age only |
+| Area | Built-in source | What goes in | Needs admin |
+|---|---|---|---|
+| Hardware | `Win32_ComputerSystem`, `Win32_Processor`, `Win32_PhysicalMemory`, `Win32_VideoController`, display settings, audio and camera devices from `Win32_PnPEntity` by class | Model, CPU, cores, memory size, GPU and driver version, monitor count and resolution, headset and camera names and driver versions | no |
+| Software | `Win32_OperatingSystem`, `Get-HotFix`, the uninstall registry keys (names and versions only), Windows App, Teams and plugin versions | OS edition, build and last update; installed apps list; uptime and pending reboot | no |
+| Storage | `Get-PhysicalDisk` (`HealthStatus`: Healthy, Warning, Unhealthy, Unknown), `Get-Volume` | Disk health and free space | unknown (S5) |
+| Power | `powercfg /batteryreport` (HTML, laptops), `powercfg /getactivescheme` | Battery wear and the active power plan | unknown (S5) |
+| Stability | Reliability Monitor records (`Win32_ReliabilityRecords`) | App crashes and hangs in the time window | unknown (S5) |
+| Security posture | `Get-MpComputerStatus` where Microsoft Defender is present | Protection on or off and signature age only | unknown (S5) |
+| Performance | `Get-Counter`: processor, memory, disk, network interface; in a session, the per-session RemoteFX and user input delay counters AVD Insights reads | Peaks and averages during the reproduction | no for interactive users (`learn.microsoft.com/windows/win32/perfctrs/limited-user-access-support`), but some counter sets carry their own ACLs |
 
-A `health.json` sums it up as informational flags with the value behind each one (low disk space, high battery wear, long uptime, pending reboot, recent crashes, a peak during the reproduction), each a sentence in plain language for the helpdesk, never a verdict on the AVD service. Thresholds for the flags are uncited heuristics until a source exists and are labeled that way. Device serial numbers and MAC addresses are not collected.
+Counter names are localized, so the script finds counter sets with `Get-Counter -ListSet` and by index rather than by English path, and records a missing set as "not present". Event messages and folder names are localized too; the script matches by event ID, channel and known-folder ID, never by display text.
 
-Open-source prior art: osquery (inventory as SQL across platforms) is the best open-source inventory tool, but it needs an agent installed, which this tool does not ask of a user; it is the parity checklist for the fields above, not a dependency. In the browser, the page adds nothing: CPU core counts, memory hints and screen size are fingerprinting material, so they stay in the bundle, which the user hands only to their helpdesk.
+A `health.json` sums it up as informational flags with the value behind each one (low disk space, high battery wear, long uptime, pending reboot, recent crashes, a peak during the reproduction), each a sentence in plain language for the helpdesk, never a verdict on the AVD service. Thresholds for the flags are uncited heuristics until a source exists and are labeled that way.
 
-### 17.8 Layout and roadmap
+In the browser, the page adds nothing: CPU core counts, memory hints and screen size are fingerprinting material, so they stay in the bundle, which the user hands only to their helpdesk.
 
-`collector/Get-AvdLogBundle.ps1` (the entry point, with the family notice at the top) and `collector/AvdLogBundle.psm1` (pure functions: the source list, the manifest, path normalization, size caps), tested offline with Pester against a synthetic profile tree, the way every family PowerShell repo works. The source list is data (`collector/sources.json`), each row citing the Learn page and anchor it comes from, so a moved log folder is a one-line change. The bundle comes after v0 of the page; it is independent of it and could ship first if Nick prefers (Q11).
+### 17.8 Layout, spikes and roadmap
+
+`collector/Get-AvdLogBundle.ps1` (the entry point, with the family notice at the top), `collector/AvdLogBundle.psm1` (pure functions: the source list, the manifest, path normalization, the property allowlists, size caps) and `collector/sources.json`, tested offline with Pester against a synthetic profile tree, in Constrained Language Mode as well as Full. The release is the one signed `.ps1` assembled from them (17.5). The bundle comes after v0 of the page; it is independent of it and could ship first if Nick prefers (Q11), once signing is settled.
+
+**Spike S5** (offline, no tenant): on a standard user account on Windows 11 and on a multi-session host, record which channels, CIM classes, counter sets and `powercfg` reports a non-admin can read, and how `Compress-Archive` behaves on files Windows App and Teams hold open.
+
+### 17.9 Red team (Fable, 2026-10-21)
+
+Eighteen findings, all folded in above:
+
+1. The copyable `-ExecutionPolicy Bypass` command taught the phishing pattern and does not work under App Control: no command to paste, signed releases only, helpdesk deployment (17.5).
+2. The script must run in Constrained Language Mode: cmdlets only, one assembled `.ps1`, a CLM analyzer rule and a CLM Pester pass (17.5).
+3. The Snipping Tool autosaves to Pictures\Screenshots, which OneDrive Known Folder Move syncs: save to Downloads, warn on OneDrive paths (17.6).
+4. Safari records MP4, not WebM, and phone support for screen capture is changing: container by `isTypeSupported`, button by feature detection (17.6).
+5. A multi-session host's logs hold other users' data and mostly cannot be filtered: said in consent and the manifest; per-channel status; the admin switch is the only complete path (17.2, 17.4).
+6. The recording is the most sensitive artifact: video only, window first, a review step, first in the privacy list (17.4, 17.6).
+7. Section 8.3 said the page had no free-text field: amended; comments never reach the export, the summary or the paste view.
+8. Ctrl+Alt+Shift+1 output differs between the two Learn pages: both patterns, files newer than the script's start (17.2).
+9. The new Teams log path made exact; the retired Remote Desktop client's folder marked legacy (17.2).
+10. Admin needs were unstated: a column per source, "access denied" recorded, counters by discovery (17.2, 17.7).
+11. `Compress-Archive` limits and locked files: staging copy, "locked, skipped", explicit JSON depth (17.3).
+12. Downloads can be redirected and sits in the FSLogix container in a session: resolve the known folder, warn, check free space (17.3).
+13. A same-origin hash proves nothing: signed release with provenance (17.5).
+14. Inventory leaked identity (user name, serials, Defender computer ID): property allowlists with a test (17.4).
+15. The no-network test was too narrow: widened (17.5).
+16. Steps Recorder and WMIC claims confirmed; the Snipping Tool stays a link.
+17. TSS license read: use only to help Microsoft troubleshoot, no distribution; linked, nothing copied (17.2).
+18. Prior art: osquery's `osqueryi` runs without a service but is still a third-party binary to install, so it stays a parity checklist. Collection-bundle designs worth comparing before the collector is built: Velociraptor's offline collector (one self-contained collector, zip plus manifest, no upload), CyLR, `sos report` (plugins per source, size caps, an opt-in obfuscation step) and Replicated's `support-bundle` (declarative collectors and redactors). Their licenses are to be read from each license file before anything is reused; the red team gave them from memory.
+
+Also added from its "missing" list: platforms beyond Windows (17.1), accessibility (17.6), localization (17.7), retention and a helpdesk note (17.3), and a budget table (17.3).
