@@ -17,7 +17,7 @@ function files(dir = root, out = []) {
   return out;
 }
 // Every file is scanned except known binary types, so a new extension can't slip past the leak checks.
-const binary = ['.bin', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.zip'];
+const binary = ['.bin', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.mp4', '.webm', '.woff', '.woff2', '.zip'];
 const textFiles = files().filter((p) => !binary.includes(extname(p).toLowerCase()));
 
 // GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens.
