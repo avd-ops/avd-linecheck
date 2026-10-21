@@ -14,13 +14,13 @@ A one-button network check for people who work on a virtual desktop. Open a link
 
 ## Status
 
-**Design only. Nothing is built yet.** The design is [docs/spec.md](docs/spec.md): what a browser can and cannot measure, the AVD checks and their cited thresholds, privacy, hosting, prior art, and the open questions in section 15. Section 17 adds a companion log bundle (Windows App, Teams and performance logs, zipped to your Downloads folder, never uploaded).
+**Design only. Nothing is built yet.** The design is [docs/spec.md](docs/spec.md): what a browser can and cannot measure, the AVD checks and their cited thresholds, privacy, hosting, prior art, and the open questions in section 15. Section 17 designs a companion log bundle (Windows App, Teams and performance logs, zipped to your Downloads folder, never uploaded), which is built in [avd-current-state](https://github.com/avd-ops/avd-current-state) as part of its local collector.
 
 | Version | Delivers |
 |---|---|
 | v0 | The static page with a generic pack: reachability, region ranking, download sufficiency, jitter and stalls, a verdict, an export with no personal data, and a view that reads a pasted result |
 | v1 | The AVD pack: Microsoft's published end-user endpoints and round-trip bands, cited at a pinned commit |
-| Log bundle | A script that collects AVD, Teams and performance logs from your device or your remote session into one zip in Downloads |
+| Log bundle | Built in avd-current-state: a script that collects AVD, Teams and performance logs from your device or your remote session into one zip in Downloads |
 | v2 | An optional server probe, in separately costed pieces |
 
 ## Layout
