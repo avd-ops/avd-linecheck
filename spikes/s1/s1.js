@@ -1,5 +1,7 @@
 // avd-linecheck spike S1: the landing zone portal's method (one warm-up, then timed no-cors requests, median),
 // against this page's own origin and two Microsoft hosts, to compare with ping on the same network.
+// The two roots answered HEAD with 200 and no redirect on 2026-10-21; a redirect to another host would be
+// blocked by the CSP and show as "blocked or unreachable", never as a number.
 // Personal project, research and learning only, not for production, as is.
 'use strict';
 
@@ -9,12 +11,13 @@ const TARGETS = [
   { name: 'windows.cloud.microsoft', url: 'https://windows.cloud.microsoft/' },
 ];
 const SAMPLES = 10;
+const TIMEOUT_MS = 5000;
 
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
 
 async function timeOnce(url) {
   const t0 = performance.now();
-  await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', credentials: 'omit', redirect: 'follow' });
+  await spike.fetchWithin(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', credentials: 'omit', redirect: 'follow' }, TIMEOUT_MS);
   return performance.now() - t0;
 }
 
@@ -25,24 +28,17 @@ async function sample(t) {
     for (let i = 0; i < SAMPLES; i++) ms.push(await timeOnce(t.url));
     return { target: t.name, medianMs: Math.round(median(ms)), minMs: Math.round(Math.min(...ms)), maxMs: Math.round(Math.max(...ms)), samples: ms.length };
   } catch (e) {
-    return { target: t.name, error: 'blocked or unreachable' };
+    return { target: t.name, error: e && e.name === 'TimeoutError' ? `no answer within ${TIMEOUT_MS} ms` : 'blocked or unreachable' };
   }
 }
 
-async function run() {
-  const out = document.getElementById('out');
+spike.wire(async (status) => {
   const rows = [];
-  for (const t of TARGETS) { out.textContent = `Sampling ${t.name}...`; rows.push(await sample(t)); }
-  const result = {
-    spike: 'S1', schemaVersion: 1, at: new Date().toISOString().slice(0, 10),
-    browser: navigator.userAgentData ? navigator.userAgentData.brands.map((x) => `${x.brand} ${x.version}`).join(', ') : navigator.userAgent,
+  for (const t of TARGETS) { status(`Sampling ${t.name}...`); rows.push(await sample(t)); }
+  return {
+    ...spike.header('S1'),
     connection: navigator.connection ? navigator.connection.effectiveType : null,
     note: 'each number is at most the round trip plus server time: an upper bound, never the round trip itself',
     rows,
   };
-  out.textContent = JSON.stringify(result, null, 2);
-  document.getElementById('copy').disabled = false;
-}
-
-document.getElementById('run').addEventListener('click', run);
-document.getElementById('copy').addEventListener('click', () => navigator.clipboard.writeText(document.getElementById('out').textContent));
+});

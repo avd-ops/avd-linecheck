@@ -43,6 +43,10 @@ All three still answer, so a browser `no-cors` probe would count them as reachab
 
 Wanted: the same page on Safari (Mac and iPad), Firefox, and Chrome on Android.
 
+## Code review (2026-10-21)
+
+The code-review skill found ten points on the first version, all fixed: every request has a timeout that becomes a row; S4 rejects anything that is not the 8 MiB file and reads its timing entry for the right run, measuring throughput from first byte to last; the build job can read Pages; the copy button reports a failure; an iPad is told apart from a Mac; the transferSize check reads resource timing; shared code lives in `common.js`; the test checks the CSP starts from `default-src 'none'` and catches any inline handler. S1's two roots answer HEAD with 200 and no redirect (2026-10-21); a redirect to another host would be blocked by the CSP and reported as "blocked or unreachable", never timed.
+
 ## How to run the device checks
 
 Once GitHub Pages is on (Settings, Pages, Source: GitHub Actions), the pages are at the repository's Pages address under `s1/`, `s3/` and `s4/`. Each has one button and a "Copy the result" button. Paste the result into the thread. The results hold the browser name and timings only, no address.

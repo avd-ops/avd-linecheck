@@ -52,22 +52,11 @@ function capture() {
   };
 }
 
-async function run() {
-  const out = document.getElementById('out');
-  out.textContent = 'Running...';
-  const result = {
-    spike: 'S3', schemaVersion: 1, at: new Date().toISOString().slice(0, 10),
-    browser: navigator.userAgentData ? navigator.userAgentData.brands.map((x) => `${x.brand} ${x.version}`).join(', ') : navigator.userAgent,
-    mobile: navigator.userAgentData ? navigator.userAgentData.mobile : /Mobi|iPad|iPhone|Android/.test(navigator.userAgent),
-    crossOriginIsolated: self.crossOriginIsolated === true,
-    timer: timerStep(),
-    resourceTimingTransferSize: 'transferSize' in (performance.getEntriesByType('navigation')[0] || {}),
-    webrtc: await webrtcStats().catch((e) => ({ supported: true, error: String(e) })),
-    capture: capture(),
-  };
-  out.textContent = JSON.stringify(result, null, 2);
-  document.getElementById('copy').disabled = false;
-}
-
-document.getElementById('run').addEventListener('click', run);
-document.getElementById('copy').addEventListener('click', () => navigator.clipboard.writeText(document.getElementById('out').textContent));
+spike.wire(async () => ({
+  ...spike.header('S3'),
+  crossOriginIsolated: self.crossOriginIsolated === true,
+  timer: timerStep(),
+  resourceTimingTransferSize: 'PerformanceResourceTiming' in window && 'transferSize' in PerformanceResourceTiming.prototype,
+  webrtc: await webrtcStats().catch((e) => ({ supported: true, error: String(e) })),
+  capture: capture(),
+}));
