@@ -1,0 +1,23 @@
+name: ci
+
+# Repo foundations: the notice, the license, links that resolve, no GUIDs or emails, no HCL.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: node --test
+        run: node --test "tests/*.test.mjs"
