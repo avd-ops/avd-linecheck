@@ -355,7 +355,7 @@ None of these touches a tenant or costs money.
 
 ## 14. Red team
 
-Reviewed by Fable (claude-fable-5-1) on 2026-10-21 before this version. Findings and what changed: section 14.1 is filled in from the review. Section 17 (the log bundle) was added after the review and has not been red-teamed yet.
+Reviewed by Fable (claude-fable-5-1) on 2026-10-21 before this version. Findings and what changed: section 14.1 is filled in from the review. Section 17 (the log bundle, user-added context, inventory and health) was added after the review and has not been red-teamed yet.
 
 ### 14.1 Findings folded in
 
@@ -400,7 +400,7 @@ The avd-linecheck foundations review (2026-10-21, code-review skill) corrected f
 8. **The landing zone's portal**: link to the page from its region and verify steps and vendor the engine later (recommended), or keep its own copy forever (6.2).
 9. **v2 pieces.** Which of echo and sink (v2a), STUN and TURN (v2b), WebTransport (v2c) and Globalping outside-in (v2d) are worth their cost line, and in what order (section 10).
 10. **Go for the spikes.** They are offline or free; no tenant and no spend.
-11. **Log bundle** (section 17): Windows script for the device and the session first, with macOS and mobile pointed at Microsoft's in-app steps (recommended); before or after the page's v0; Downloads as the destination (recommended over Documents, which OneDrive may sync); and whether to sign the script later, which needs a certificate and a cost line.
+11. **Log bundle** (section 17): Windows script for the device and the session first, with macOS and mobile pointed at Microsoft's in-app steps (recommended); before or after the page's v0; Downloads as the destination (recommended over Documents, which OneDrive may sync); whether to sign the script later, which needs a certificate and a cost line; and the user-added pieces (17.6: screenshot and recording in the page, comments only in the bundle, a picked rating that may go into the export) and the inventory and health fields (17.7).
 
 ## 16. Sources checked (2026-10-21)
 
@@ -449,6 +449,32 @@ The network export (section 8.3) holds no personal data. **Logs do**: user names
 
 Corporate devices often block unsigned scripts. The page gives one copyable command (`powershell -NoProfile -ExecutionPolicy Bypass -File <path>`), which changes the policy for that process only, and says that if the device still blocks it, the helpdesk has to run it or sign it. Signing the script with a family code-signing certificate is a cost and an identity question for later (Q11). The script refuses to run elevated unless the helpdesk passes the admin switch, so a user does not collect other users' data by accident.
 
-### 17.6 Layout and roadmap
+### 17.6 What the user adds: screenshots, a recording, comments and a rating
+
+Nick, 2026-10-21: "screenshot/screen record/comments/sentiment and system hardware/software inventory/health too if possible with open source/built in tooling/data". Everything here is built into the browser or Windows; nothing is installed and nothing is sent.
+
+- **Screenshot and screen recording, in the page.** A "Show what is happening" button uses the browser's own screen capture (`getDisplayMedia`, after a click, with the browser's picker and its sharing indicator) and `MediaRecorder`: one frame drawn to a canvas becomes a PNG, or up to 2 minutes become a WebM video. Run on the user's own device, it captures the Windows App window, which is what the user sees. The file is saved with an ordinary download, never uploaded, and the page shows it before saving so the user can discard it. Desktop browsers only: mobile browsers do not offer screen capture, so the page hides the button there and points to the phone's own screenshot. Steps Recorder (`psr.exe`) is not used: Microsoft deprecated it in November 2023 and recommends the Snipping Tool, Xbox Game Bar or Clipchamp for recording (`learn.microsoft.com/windows/whats-new/deprecated-features`); the page names the Snipping Tool as the fallback.
+- **Comments.** A text box, "What were you doing, and when did it start?", plus the time the problem happened. This is the page's first free-text field, so it gets the rules 8.3 reserved for that day: comments go only into the log bundle (`comments.txt`), never into the network export or the copied summary, and the redaction pattern list is applied before anything with a comment is shown in the paste view.
+- **How it feels (sentiment).** The user picks it: a five-point "how is your desktop today" scale and symptom chips (slow typing, frozen or blurry screen, Teams audio or video, disconnects, sign-in, printing, slow apps). Sentiment is never inferred from the comment by a model (family rule: a model never decides). The rating and the chips are enumerated values, so they may go into the network export and the summary, where a helpdesk can count them across tickets.
+- **The script picks them up.** When the collector runs, it offers a file dialog to add the screenshots, recordings and the comments file the user saved (it never searches the Pictures or Videos folders on its own) and lists them in the manifest.
+
+### 17.7 Device inventory and health, built in
+
+The collector records what the machine is and how healthy it looks, using only what Windows ships (CIM classes through `Get-CimInstance`, since WMIC was removed from Windows 11 24H2 on (`learn.microsoft.com/windows/whats-new/removed-features`), the Storage module and `powercfg`). On the device it describes the endpoint; inside the session it describes the session host.
+
+| Area | Built-in source | What goes in |
+|---|---|---|
+| Hardware | `Win32_ComputerSystem`, `Win32_Processor`, `Win32_PhysicalMemory`, `Win32_VideoController`, `Win32_DesktopMonitor` and display settings, audio and camera devices from `Win32_PnPEntity` by class | Model, CPU, cores, memory, GPU and driver version, monitor count and resolution, headset and camera names and driver versions |
+| Software | `Win32_OperatingSystem`, `Get-HotFix`, the uninstall registry keys (names and versions only), Windows App, Teams and plugin versions | OS edition, build and last update; installed apps list; uptime and pending reboot |
+| Storage | `Get-PhysicalDisk` (`HealthStatus`: Healthy, Warning, Unhealthy, Unknown), `Get-Volume` | Disk health and free space |
+| Power | `powercfg /batteryreport` (HTML, laptops), `powercfg /getactivescheme` | Battery wear and the active power plan |
+| Stability | Reliability Monitor records (`Win32_ReliabilityRecords`), the performance sample of 17.2 | App crashes and hangs in the time window; CPU and memory peaks during the reproduction |
+| Security posture | `Get-MpComputerStatus` where Microsoft Defender is present | Protection on or off and signature age only |
+
+A `health.json` sums it up as informational flags with the value behind each one (low disk space, high battery wear, long uptime, pending reboot, recent crashes, a peak during the reproduction), each a sentence in plain language for the helpdesk, never a verdict on the AVD service. Thresholds for the flags are uncited heuristics until a source exists and are labeled that way. Device serial numbers and MAC addresses are not collected.
+
+Open-source prior art: osquery (inventory as SQL across platforms) is the best open-source inventory tool, but it needs an agent installed, which this tool does not ask of a user; it is the parity checklist for the fields above, not a dependency. In the browser, the page adds nothing: CPU core counts, memory hints and screen size are fingerprinting material, so they stay in the bundle, which the user hands only to their helpdesk.
+
+### 17.8 Layout and roadmap
 
 `collector/Get-AvdLogBundle.ps1` (the entry point, with the family notice at the top) and `collector/AvdLogBundle.psm1` (pure functions: the source list, the manifest, path normalization, size caps), tested offline with Pester against a synthetic profile tree, the way every family PowerShell repo works. The source list is data (`collector/sources.json`), each row citing the Learn page and anchor it comes from, so a moved log folder is a one-line change. The bundle comes after v0 of the page; it is independent of it and could ship first if Nick prefers (Q11).
