@@ -1,0 +1,58 @@
+name: served
+
+# What visitors get must be what is in the repo (spec 12.2, L5, L7). A proxy or CDN in front of
+# GitHub Pages can inject scripts or reporting endpoints, or serve the page over plain HTTP. This runs
+# after every Pages deploy and once a day, so a DNS record switched to "proxied" later is caught too.
+# The build adds only s4/8m.bin (random bytes); every other served file must equal the repo's copy.
+# If the build ever transforms files, compare against the uploaded Pages artifact instead of the repo.
+on:
+  workflow_run:
+    workflows: [pages]
+    types: [completed]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  served:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Served files match the repo, over HTTPS only, with no proxy reporting
+        env:
+          # The default Pages address redirects to the custom domain when one is set; forks check their own.
+          START: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          set -u
+          tmp="$RUNNER_TEMP/served"; mkdir -p "$tmp"
+          site=$(curl -sSL --max-time 30 -o /dev/null -w '%{url_effective}' "$START/") || { echo "::error::$START did not answer"; exit 1; }
+          site="${site%/}"; host="${site#*://}"; host="${host%%/*}"
+          echo "Site: $site"
+          fail=0
+          case "$site" in https://*) ;; *) echo "::error::the site ends up on $site, not HTTPS (turn on Enforce HTTPS)"; fail=1;; esac
+          # HTTP must only redirect to HTTPS (Enforce HTTPS on).
+          loc=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code} %{redirect_url}' "http://$host/") || loc="no answer"
+          case "$loc" in 301\ https://*|308\ https://*) echo "http -> https: ok";; *) echo "::error::http://$host/ answered '$loc', not a redirect to https (turn on Enforce HTTPS)"; fail=1;; esac
+          # Every file, retried for up to 10 minutes while the Pages CDN cache (max-age 600) catches up.
+          files=$(cd spikes && find . -type f ! -name 8m.bin | sed 's|^\./||' | sort)
+          for f in $files s4/8m.bin; do
+            url="$site/$f"; ok=0
+            for attempt in $(seq 1 20); do
+              if curl -sSf --max-time 60 -D "$tmp/h" -o "$tmp/b" "$url"; then
+                if [ "$f" = s4/8m.bin ]; then [ "$(stat -c %s "$tmp/b")" = 8388608 ] && ok=1
+                else cmp -s "$tmp/b" "spikes/$f" && ok=1; fi
+              fi
+              [ $ok = 1 ] && break; sleep 30
+            done
+            if [ $ok = 1 ]; then echo "ok   $f"; else echo "::error::$url does not match spikes/$f after 10 minutes (changed in transit, or not deployed)"; fail=1; fi
+            if grep -qiE '^(report-to|reporting-endpoints|nel|cf-ray):|^content-security-policy:.*report-(uri|to)' "$tmp/h"; then
+              echo "::error::$url carries reporting headers a proxy added (set the DNS record to DNS only)"; grep -iE '^(server|report-to|reporting-endpoints|nel|cf-ray|content-security-policy):' "$tmp/h"; fail=1
+            fi
+          done
+          exit $fail
