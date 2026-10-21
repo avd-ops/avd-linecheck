@@ -4,6 +4,7 @@ name: served
 # GitHub Pages can inject scripts or reporting endpoints, or serve the page over plain HTTP. This runs
 # after every Pages deploy and once a day, so a DNS record switched to "proxied" later is caught too.
 # The build adds only s4/8m.bin (random bytes); every other served file must equal the repo's copy.
+# If the build ever transforms files, compare against the uploaded Pages artifact instead of the repo.
 on:
   workflow_run:
     workflows: [pages]
