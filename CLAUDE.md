@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md
 
 avd-linecheck: the family's end-user portal, a one-button, static, keyless browser network check for virtual desktop users (AVD first, generic packs for anyone) with guided steps for what a page cannot do. Roles (Nick, 2026-10-21): avd-assess is the map and the dictionary, avd-current-state the collector and validator, avd-landing-zone the deployment engine, avd-linecheck the end-user portal. The log bundle is designed here (spec section 17) and built in avd-current-state as its local collector's session and device modes. Design: `docs/spec.md` (moved from avd-ops PR #29; red-teamed, section 14; open questions, section 15; log bundle, section 17). Public, MIT, in the avd-ops org; conventions follow [avd-landing-zone](https://github.com/avd-ops/avd-landing-zone) and the avd-ops design system.
