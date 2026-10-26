@@ -1,0 +1,121 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { findingSentence, rttFinding, overallVerdict, reachabilityFinding, rankRegions, regionRating, visibleRegions, hasCustomHosts, makeExport, parseSharedResult } from '../site/lib/results.mjs';
+
+const bands = [
+  { below: 100, state: 'pass', claim: 'ideal' },
+  { below: 150, state: 'warn', claim: 'target' },
+  { atMost: 200, state: 'warn', claim: 'quality' },
+  { otherwise: 'fail', claim: 'quality' }
+];
+
+test('RTT bands are inclusive only where the cited pack says they are', () => {
+  assert.equal(rttFinding(99, bands).status, 'pass');
+  assert.equal(rttFinding(100, bands).status, 'warn');
+  assert.equal(rttFinding(150, bands).status, 'warn');
+  assert.equal(rttFinding(200, bands).status, 'warn');
+  assert.equal(rttFinding(201, bands).status, 'fail');
+  assert.equal(rttFinding(201, bands).claim, 'quality');
+  assert.equal(rttFinding(201, bands).threshold, '> 200 ms');
+  assert.equal(rttFinding(null, bands).status, 'unknown');
+});
+
+test('overall verdict fails closed and ignores informational findings', () => {
+  assert.equal(overallVerdict([]).status, 'unknown');
+  assert.equal(overallVerdict([{ status: 'pass', required: true }]).status, 'pass');
+  assert.equal(overallVerdict([{ status: 'pass', required: true }, { status: 'blocked', required: false }]).status, 'pass');
+  assert.equal(overallVerdict([{ status: 'unknown', required: true }]).status, 'unknown');
+  assert.equal(overallVerdict([{ status: 'fail', required: true }, { status: 'blocked', required: true }]).status, 'blocked');
+});
+
+test('a failed optional endpoint is unknown rather than a required block', () => {
+  assert.equal(reachabilityFinding({ id: 'optional', required: false }, 'blocked').status, 'unknown');
+  assert.equal(reachabilityFinding({ id: 'required', required: true }, 'blocked').status, 'blocked');
+});
+
+test('finding wording comes from the local result contract', () => {
+  assert.equal(findingSentence('blocked'), 'This required check did not answer from this network; a proxy or blocker may be involved.');
+  assert.equal(findingSentence('info'), 'This is informational and does not change the overall verdict.');
+});
+
+test('regional ranking sorts measured results first and unknowns last', () => {
+  const ranking = rankRegions([
+    { region: { id: 'slow' }, result: { median: 88 } },
+    { region: { id: 'unknown' }, result: { median: null } },
+    { region: { id: 'fast' }, result: { median: 24 } }
+  ]);
+  assert.deepEqual(ranking.map((item) => item.region.id), ['fast', 'slow', 'unknown']);
+});
+
+test('regional ranking uses the deployment portal latency ratings', () => {
+  assert.equal(regionRating(null), 'No answer');
+  assert.equal(regionRating(99), 'Good');
+  assert.equal(regionRating(100), 'Usable');
+  assert.equal(regionRating(150), 'Usable');
+  assert.equal(regionRating(151), 'Sluggish');
+});
+
+test('region table shows five by default and retains a selected region outside the top five', () => {
+  const regions = Array.from({ length: 8 }, (_, index) => ({ region: { id: `r${index}` }, result: { median: index } }));
+  assert.deepEqual(visibleRegions(regions, 'r7', false, 5).map((entry) => entry.region.id), ['r0', 'r1', 'r2', 'r3', 'r4', 'r7']);
+  assert.equal(visibleRegions(regions, 'r7', true, 5).length, 8);
+});
+
+test('share export allowlists fields and rounds its timestamp to a minute', () => {
+  const raw = {
+    pack: { id: 'avd', version: '2026.10', allowedFindingIds: ['client.sign-in', 'client.wvd'] },
+    createdAt: '2026-10-25T13:14:59.000Z',
+    browser: { family: 'Firefox', major: 142, userAgent: 'private ua' },
+    platform: 'desktop',
+    region: 'eastus',
+    findings: [{ id: 'client.sign-in', status: 'pass', value: 42.8, unit: 'ms', required: true, claim: 'ref:endpoints#client-list', sentence: 'private text', tenant: 'private tenant' }],
+    notTested: ['client.wvd'],
+    ip: 'private ip',
+    deviceName: 'private device',
+    comments: 'private comments'
+  };
+  const result = makeExport(raw);
+
+  assert.equal(result.createdAt, '2026-10-25T13:14Z');
+  assert.equal(result.browser.family, 'Firefox');
+  assert.equal(result.findings[0].sentence, 'This check answered from this network.');
+  for (const secret of ['private ua', 'private tenant', 'private ip', 'private device', 'private comments', 'private text']) {
+    assert.doesNotMatch(JSON.stringify(result), new RegExp(secret));
+  }
+});
+
+test('share export includes three measured regions by default and all only by choice', () => {
+  const pack = { id: 'generic', version: '1.0', allowedFindingIds: ['region.a', 'region.b', 'region.c', 'region.d'] };
+  const run = {
+    pack,
+    createdAt: '2026-10-25T13:14:00Z',
+    findings: ['a', 'b', 'c', 'd'].map((id, index) => ({ id: `region.${id}`, status: 'info', value: (index + 1) * 10, unit: 'ms' }))
+  };
+  assert.equal(makeExport(run).findings.length, 3);
+  assert.equal(makeExport({ ...run, fullRegions: true }).findings.length, 4);
+});
+
+test('custom hosts mark shared results as public-sensitive', () => {
+  const pack = { id: 'generic', version: '1.0', hosts: [{ id: 'support', host: 'support.contoso.com', purpose: 'Support service' }], allowedFindingIds: ['support'] };
+  assert.equal(hasCustomHosts(pack), true);
+  const result = makeExport({ pack, createdAt: '2026-10-25T13:14:00Z', findings: [{ id: 'support', status: 'pass', required: false }] });
+  assert.equal(result.custom, true);
+  assert.equal(result.findings[0].host, 'support.contoso.com');
+});
+
+test('pasted results use only local IDs, states, and wording', () => {
+  const pack = { id: 'avd', version: '2026.10', allowedFindingIds: ['client.sign-in', 'client.wvd'] };
+  const text = JSON.stringify({
+    schemaVersion: 1,
+    pack: { id: 'avd', version: '2026.10' },
+    overall: { status: 'pass', label: 'ignore this' },
+    findings: [{ id: 'client.sign-in', status: 'pass', required: true, value: 20, unit: 'ms', sentence: '<script>bad</script>' }, { id: 'client.wvd', status: 'blocked', required: false, value: null }, { id: 'host.wvd', status: 'pass', required: true, value: 1 }, { id: 'not-known', status: 'pass', value: 1 }]
+  });
+  const parsed = parseSharedResult(text, pack);
+
+  assert.equal(parsed.overall.status, 'pass');
+  assert.equal(parsed.findings.length, 2);
+  assert.equal(parsed.findings[0].sentence, 'This check answered from this network.');
+  assert.equal(parsed.findings[1].status, 'unknown');
+  assert.throws(() => parseSharedResult('{', pack));
+});

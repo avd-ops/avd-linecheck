@@ -1,6 +1,6 @@
 # Spikes
 
-Throwaway checks that settle questions before v0 ([spec section 13](../docs/spec.md#13-spikes-before-v0-offline-or-free-no-cloud-run)). Nick gave the go on 2026-10-21 (Q10). They are free: no tenant, no spend. The pages here publish to GitHub Pages through `.github/workflows/pages.yml`; the real page replaces them at v0. S5a now runs as avd-current-state's local collector spike S2 (Q11).
+Throwaway checks for questions before v0 ([spec section 13](../docs/spec.md#13-spikes-before-v0-offline-or-free-no-cloud-run)). Nick gave the go on 2026-10-21 (Q10). They are free: no tenant, no spend. These pages are retained as artifacts; `.github/workflows/pages.yml` now publishes the app from `site/`. S5a is specified as avd-current-state's local collector spike S2 (Q11); implementation and a real run are still pending there.
 
 | Spike | Status | Where |
 |---|---|---|
@@ -8,7 +8,7 @@ Throwaway checks that settle questions before v0 ([spec section 13](../docs/spec
 | S1, browser sample against ping | Page ready; needs three real networks | [s1/](s1/index.html) |
 | S2, old AVD hostnames | First reading done, 2026-10-21; a reading from a home network is still wanted | Below |
 | S3, browser capabilities | Page ready; Chromium read here; Safari, Firefox and phones wanted | [s3/](s3/index.html) |
-| S4, 8 MiB file from GitHub Pages | Page ready; works locally; needs Pages turned on, then cold and warm runs on real networks | [s4/](s4/index.html) |
+| S4, 8 MiB file from GitHub Pages | The app now carries the hash-named file; cold and warm real-network checks remain | [s4/](s4/index.html) |
 
 ## S1: can `@cloudflare/speedtest` run with no contact with Cloudflare?
 
@@ -49,4 +49,4 @@ The code-review skill found ten points on the first version, all fixed: every re
 
 ## How to run the device checks
 
-Once GitHub Pages is on (Settings, Pages, Source: GitHub Actions), the pages are at https://linecheck.avd-ops.dev/ under `s1/`, `s3/` and `s4/` (a fork gets its own `github.io` address). Each has one button and a "Copy the result" button. Paste the result into the thread. The results hold the browser name and timings only, no address.
+The spike pages are no longer deployed. They remain in this folder for offline review and as a record of the early checks. The current user-facing app is published from `site/`.

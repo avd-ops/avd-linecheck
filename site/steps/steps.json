@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "windows.capture",
+      "platform": "Windows",
+      "title": "Capture and save a screenshot",
+      "actions": [
+        "Press Windows logo key + Shift + S, then select the area to capture.",
+        "Open the capture in Snipping Tool. Select Save as and choose Downloads as the location."
+      ],
+      "whatYouShouldSee": "The image file in Downloads.",
+      "done": "Attach it only to the helpdesk request that asked for it. Check the image for names or other private details first.",
+      "source": {
+        "title": "Use Snipping Tool to capture screenshots",
+        "url": "https://support.microsoft.com/en-us/windows/apps/use-snipping-tool-to-capture-screenshots",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    },
+    {
+      "id": "macos.capture",
+      "platform": "macOS",
+      "title": "Capture and save a screenshot",
+      "actions": [
+        "Press Shift-Command-5 to open Screenshot.",
+        "Open Options and choose Downloads as the save location. Choose a capture or recording mode and start it."
+      ],
+      "whatYouShouldSee": "The capture file in Downloads.",
+      "done": "Attach it only to the helpdesk request that asked for it. Check the image for names or other private details first.",
+      "source": {
+        "title": "Take a screenshot on Mac",
+        "url": "https://support.apple.com/en-us/102646",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    },
+    {
+      "id": "avd.connection-info",
+      "platform": "Windows App",
+      "title": "Find your connection information",
+      "actions": [
+        "Connect to your remote session.",
+        "On the connection toolbar, select the signal-strength icon to open Connection Information.",
+        "Read the Transport protocol entry. It describes this session, not the browser check."
+      ],
+      "whatYouShouldSee": "The transport used by this remote session.",
+      "done": "Share the value with your helpdesk if they asked for it.",
+      "source": {
+        "title": "Configure RDP Shortpath: verify the transport",
+        "url": "https://learn.microsoft.com/en-us/azure/virtual-desktop/configure-rdp-shortpath#verify-rdp-shortpath-is-working",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    },
+    {
+      "id": "teams.logs.windows",
+      "platform": "Windows",
+      "title": "Collect Teams support logs",
+      "actions": [
+        "In Teams inside the remote session, press Ctrl + Alt + Shift + 1.",
+        "Wait for the Downloading web logs banner to go away, then look in that session's Downloads folder."
+      ],
+      "whatYouShouldSee": "A Teams support log file in Downloads.",
+      "done": "Send the file only through the channel your helpdesk named. Logs can contain private diagnostic information.",
+      "source": {
+        "title": "Collect log files for monitoring and troubleshooting in Teams",
+        "url": "https://learn.microsoft.com/en-us/microsoftteams/log-files",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    },
+    {
+      "id": "teams.logs.macos",
+      "platform": "macOS",
+      "title": "Collect Teams support logs",
+      "actions": [
+        "In Teams, open the Help menu and select Collect support files, or press Option + Command + Shift + 1.",
+        "Wait for the Downloading web logs banner to go away, then look in Downloads."
+      ],
+      "whatYouShouldSee": "A Teams support log file in Downloads.",
+      "done": "Send the file only through the channel your helpdesk named. Logs can contain private diagnostic information.",
+      "source": {
+        "title": "Collect log files for monitoring and troubleshooting in Teams",
+        "url": "https://learn.microsoft.com/en-us/microsoftteams/log-files",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    },
+    {
+      "id": "avd.shortpath-test",
+      "platform": "Windows",
+      "title": "Run the Microsoft Shortpath test",
+      "actions": [
+        "Open Microsoft's RDP Shortpath guide and find Check client device STUN/TURN server connectivity and NAT type.",
+        "Download and run avdnettest.exe on your own device only if your helpdesk asks you to. This page does not download or run it."
+      ],
+      "whatYouShouldSee": "The test's local output in its window.",
+      "done": "Give the output to your helpdesk through its approved support channel. Do not attach it to a public issue.",
+      "source": {
+        "title": "Configure RDP Shortpath: check client device connectivity",
+        "url": "https://learn.microsoft.com/en-us/azure/virtual-desktop/configure-rdp-shortpath#check-client-device-stunturn-server-connectivity-and-nat-type",
+        "checkedAt": "2026-10-25"
+      },
+      "assets": []
+    }
+  ]
+}

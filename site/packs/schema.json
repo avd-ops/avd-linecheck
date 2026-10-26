@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:avd-ops:avd-linecheck:pack:v1",
+  "title": "avd-linecheck pack",
+  "type": "object",
+  "required": ["id", "version", "title", "endpointIds", "hosts", "regionalProbe", "thresholds", "download"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "endpointSource": {
+      "type": "object",
+      "required": ["repo", "path", "commit", "sha256"],
+      "properties": {
+        "repo": { "type": "string" },
+        "path": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "endpointIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "host", "purpose", "required", "port"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "host": { "type": "string", "pattern": "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,}$" },
+          "purpose": { "type": "string", "minLength": 1 },
+          "required": { "type": "boolean" },
+          "port": { "const": 443 },
+          "claim": { "oneOf": [{ "$ref": "#/$defs/claim" }, { "type": "null" }] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "regionalProbe": { "type": "boolean" },
+    "thresholds": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object", "required": ["below", "state", "claim"],
+            "properties": { "below": { "type": "number", "exclusiveMinimum": 0 }, "state": { "enum": ["pass", "warn", "fail"] }, "claim": { "$ref": "#/$defs/claim" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["atMost", "state", "claim"],
+            "properties": { "atMost": { "type": "number", "exclusiveMinimum": 0 }, "state": { "enum": ["pass", "warn", "fail"] }, "claim": { "$ref": "#/$defs/claim" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["otherwise", "claim"],
+            "properties": { "otherwise": { "enum": ["pass", "warn", "fail"] }, "claim": { "$ref": "#/$defs/claim" } },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "download": {
+      "type": "object",
+      "required": ["path", "bytes", "claim"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^blobs/8m-[0-9a-f]{64}\\.bin$" },
+        "bytes": { "const": 8388608 },
+        "claim": { "oneOf": [{ "$ref": "#/$defs/claim" }, { "type": "null" }] }
+      },
+      "additionalProperties": false
+    },
+    "primaryHostId": { "type": "string" },
+    "stun": { "type": "array", "maxItems": 0 },
+    "limits": { "type": "string", "minLength": 1 },
+    "links": {
+      "type": "object",
+      "properties": { "endpoints": { "format": "uri" }, "shortpath": { "format": "uri" } },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "id": { "const": "generic" } } },
+      "then": { "properties": { "endpointIds": { "maxItems": 0 }, "thresholds": { "maxItems": 0 } } }
+    },
+    {
+      "if": { "properties": { "id": { "const": "avd" } } },
+      "then": { "required": ["endpointSource", "primaryHostId", "stun", "links"] }
+    }
+  ],
+  "$defs": {
+    "claim": { "type": "string", "pattern": "^ref:[a-z0-9-]+#[a-z0-9-]+$" }
+  },
+  "additionalProperties": false
+}
