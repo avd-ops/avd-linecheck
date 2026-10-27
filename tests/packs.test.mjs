@@ -1,11 +1,13 @@
+/* Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. MIT. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { connectOrigins, probeTargets, regionalHost, selectRegions, validatePack } from '../site/lib/packs.mjs';
+import { createRequire } from 'node:module';
 
+const { connectOrigins, probeTargets, regionalHost, selectRegions, validatePack } = createRequire(import.meta.url)('../site/engine.js');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (path) => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
 

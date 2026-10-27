@@ -6,7 +6,7 @@
     "repo": "avd-ops/avd-assess",
     "path": "endpoints.json",
     "commit": "d8b6983b6fd947eb795cd5945e30e54cf1dc194b",
-    "sha256": "28becd06490714c82e06da1399da19fb80197fa710eaa558b3760ace9a77f53d"
+    "sha256": "eb8a1aed7f3c285006c05164825bbfc061c2a3fc94a58f1a68d8c6098f699472"
   },
   "endpointIds": [
     "client.sign-in",

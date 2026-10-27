@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
       - name: Check shipped modules
-        run: find site scripts -name '*.mjs' -print0 | xargs -0 -n1 node --check
+        run: find site scripts \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
       - name: Check generated CSP
         run: node scripts/update-csp.mjs --check
       - name: node --test

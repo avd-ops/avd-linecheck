@@ -1,0 +1,10 @@
+{
+  "name": "avd-linecheck",
+  "private": true,
+  "description": "avd-linecheck: end-user browser network check. Personal project, not for production, as is.",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  }
+}

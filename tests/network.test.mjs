@@ -1,6 +1,9 @@
+/* Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. MIT. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { measureSamples, measureParallelSamples, measureUntil, probeOnce } from '../site/lib/network.mjs';
+import { createRequire } from 'node:module';
+
+const { measureSamples, measureParallelSamples, measureUntil, measureDownload, runProbePhases, probeOnce } = createRequire(import.meta.url)('../site/engine.js');
 
 test('sample runner times successful probes and counts stalls without calling them passes', async () => {
   let clock = 0;
@@ -123,4 +126,69 @@ test('loaded samples stop when the download finishes', async () => {
   });
   assert.equal(calls, 2);
   assert.deepEqual(result.samples, [10]);
+});
+
+test('download sufficiency retries on cache hit, uses first-to-last-byte timing, and caps fast bursts at 67 Mbit/s', async () => {
+  const caches = [];
+  const entries = [
+    [{ transferSize: 0, responseStart: 10, responseEnd: 20 }],
+    [{ transferSize: 8388608, responseStart: 400, responseEnd: 600 }]
+  ];
+  const fast = await measureDownload({ path: 'blobs/8m.bin', bytes: 8388608 }, {
+    url: 'https://linecheck.avd-ops.dev/blobs/8m.bin',
+    fetchImpl: async (_url, opts) => {
+      caches.push(opts.cache);
+      return { ok: true, arrayBuffer: async () => new ArrayBuffer(8388608) };
+    },
+    getEntries: () => entries[caches.length - 1]
+  });
+  assert.deepEqual(caches, ['default', 'reload'], 'cache hit triggers a reload fetch');
+  assert.equal(fast.status, 'measured');
+  assert.equal(fast.elapsed, 200, 'uses responseEnd - responseStart rather than cold-edge TTFB');
+  assert.equal(fast.capped, true);
+  assert.equal(fast.reportedMbps, 67);
+  assert.equal(fast.loadedLatencyEligible, false);
+
+  const sustained = await measureDownload({ path: 'blobs/8m.bin', bytes: 8388608 }, {
+    url: 'https://linecheck.avd-ops.dev/blobs/8m.bin',
+    fetchImpl: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8388608) }),
+    getEntries: () => [{ transferSize: 8388608, responseStart: 100, responseEnd: 4100 }]
+  });
+  assert.equal(sustained.status, 'measured');
+  assert.equal(sustained.capped, false);
+  assert.equal(sustained.loadedLatencyEligible, true);
+  assert.equal(Math.round(sustained.reportedMbps), 17);
+});
+
+test('phased run completes with a verdict when all hosts time out inside the deadline', async () => {
+  let clock = 0;
+  const phasesSeen = [];
+  const res = await runProbePhases({
+    targets: [
+      { id: 'client.sign-in', host: 'login.microsoftonline.com', purpose: 'Microsoft Entra sign-in', required: true },
+      { id: 'client.portal', host: 'windows.cloud.microsoft', purpose: 'Windows App web portal', required: true }
+    ],
+    regions: [
+      { id: 'eastus', name: 'East US', geo: 'Americas' },
+      { id: 'westeurope', name: 'West Europe', geo: 'Europe' }
+    ],
+    regionMap: {
+      hostTemplate: '{region}.api.cognitive.microsoft.com',
+      measurement: { method: 'GET', samples: 3, timeoutMs: 100, concurrency: 2, top: 5 }
+    },
+    targetRegionId: 'eastus',
+    deadlineMs: 500,
+    now: () => clock,
+    probeImpl: async () => {
+      clock += 60;
+      throw new Error('timeout');
+    },
+    onProgress: (phase) => phasesSeen.push(phase)
+  });
+
+  assert.equal(res.hostResults.length, 2);
+  assert.ok(res.hostResults.every((h) => h.result.status === 'blocked'));
+  assert.equal(res.regionResults.length, 2);
+  assert.ok(res.regionResults.every((r) => r.result.status !== 'reached'));
+  assert.ok(phasesSeen.includes('Reachability'));
 });

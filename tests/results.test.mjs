@@ -1,6 +1,18 @@
+/* Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. MIT. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findingSentence, rttFinding, overallVerdict, reachabilityFinding, rankRegions, regionRating, visibleRegions, hasCustomHosts, makeExport, parseSharedResult } from '../site/lib/results.mjs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const verdict = require('../site/verdict.js');
+const exporter = require('../site/export.js');
+
+const {
+  findingSentence, rttFinding, overallVerdict, reachabilityFinding,
+  rankRegions, regionRating, visibleRegions, detectVantage,
+  detectProxyCaveats, relayGeographyNote, sentences, labels
+} = verdict;
+const { hasCustomHosts, makeExport, makeIntakeEntry, parseSharedResult, validateSentiment } = exporter;
 
 const bands = [
   { below: 100, state: 'pass', claim: 'ideal' },
@@ -61,13 +73,46 @@ test('region table shows five by default and retains a selected region outside t
   assert.equal(visibleRegions(regions, 'r7', true, 5).length, 8);
 });
 
-test('share export allowlists fields and rounds its timestamp to a minute', () => {
+test('vantage detection flags sub-5ms regional RTT as likely-session-host', () => {
+  assert.equal(detectVantage([]), 'unknown');
+  assert.equal(detectVantage([{ region: { id: 'eastus' }, result: { status: 'reached', median: 28 } }]), 'device');
+  assert.equal(detectVantage([{ region: { id: 'eastus' }, result: { status: 'reached', median: 3.4 } }]), 'likely-session-host');
+});
+
+test('proxy and tunnel caveats detect uniform host timings and geography mismatch with citations', () => {
+  const caveats = detectProxyCaveats({
+    hostResults: [
+      { target: { id: 'h1' }, result: { status: 'reached', median: 12 } },
+      { target: { id: 'h2' }, result: { status: 'reached', median: 14 } },
+      { target: { id: 'h3' }, result: { status: 'reached', median: 15 } }
+    ],
+    regionResults: [
+      { region: { id: 'westeurope', name: 'West Europe', geo: 'Europe' }, result: { status: 'reached', median: 22 } }
+    ],
+    selectedGeographies: ['Americas']
+  });
+  assert.deepEqual(caveats.map((c) => c.id), ['uniform-host-timing', 'geography-mismatch']);
+  assert.ok(caveats[0].claims.includes('ref:avd-proxy#bypass-proxies'));
+  assert.ok(caveats[1].claims.includes('ref:rdp-traffic-optimization#local-egress'));
+});
+
+test('relay geography note surfaces when the nearest measured region exceeds 150 ms', () => {
+  assert.equal(relayGeographyNote([{ region: { id: 'eastus', name: 'East US' }, result: { status: 'reached', median: 45 } }]), null);
+  const note = relayGeographyNote([{ region: { id: 'eastus', name: 'East US' }, result: { status: 'reached', median: 185 } }]);
+  assert.ok(note);
+  assert.equal(note.id, 'relay-geography');
+  assert.ok(note.claims.includes('ref:rdp-shortpath#turn-range'));
+});
+
+test('share export allowlists fields, rounds its timestamp to a minute, and validates sentiment', () => {
   const raw = {
     pack: { id: 'avd', version: '2026.10', allowedFindingIds: ['client.sign-in', 'client.wvd'] },
     createdAt: '2026-10-25T13:14:59.000Z',
     browser: { family: 'Firefox', major: 142, userAgent: 'private ua' },
     platform: 'desktop',
     region: 'eastus',
+    vantage: 'device',
+    sentiment: { rating: 2, symptoms: ['frozen-blurry-screen', 'slow-typing', 'free-text-leak'] },
     findings: [{ id: 'client.sign-in', status: 'pass', value: 42.8, unit: 'ms', required: true, claim: 'ref:endpoints#client-list', sentence: 'private text', tenant: 'private tenant' }],
     notTested: ['client.wvd'],
     ip: 'private ip',
@@ -78,10 +123,39 @@ test('share export allowlists fields and rounds its timestamp to a minute', () =
 
   assert.equal(result.createdAt, '2026-10-25T13:14Z');
   assert.equal(result.browser.family, 'Firefox');
+  assert.equal(result.vantage, 'device');
+  assert.deepEqual(result.sentiment, { rating: 2, symptoms: ['frozen-blurry-screen', 'slow-typing'] });
   assert.equal(result.findings[0].sentence, 'This check answered from this network.');
-  for (const secret of ['private ua', 'private tenant', 'private ip', 'private device', 'private comments', 'private text']) {
+  for (const secret of ['private ua', 'private tenant', 'private ip', 'private device', 'private comments', 'private text', 'free-text-leak']) {
     assert.doesNotMatch(JSON.stringify(result), new RegExp(secret));
   }
+  assert.equal(validateSentiment({ rating: 9, symptoms: ['not-a-symptom'] }), null);
+});
+
+test('assessment intake entry exports only non-identifying network.client summary fields', () => {
+  const intake = makeIntakeEntry({
+    pack: { id: 'avd', version: '2026.10', allowedFindingIds: ['client.sign-in', 'target-region', 'jitter.primary', 'download', 'region.eastus'] },
+    createdAt: '2026-10-25T13:14:59.000Z',
+    region: 'eastus',
+    vantage: 'device',
+    sentiment: { rating: 3, symptoms: ['slow-typing'] },
+    findings: [
+      { id: 'client.sign-in', status: 'pass', required: true, value: 30, unit: 'ms' },
+      { id: 'target-region', status: 'warn', required: true, value: 120, unit: 'ms' },
+      { id: 'jitter.primary', status: 'info', required: false, value: 8, unit: 'ms' },
+      { id: 'download', status: 'info', required: false, value: 67, unit: 'Mbit/s' }
+    ],
+    regionResults: [
+      { region: { id: 'eastus' }, result: { status: 'reached', median: 120 } }
+    ]
+  });
+  assert.equal(intake.schema, 'avd-assess-user-network/v1');
+  assert.equal(intake.area, 'network.client');
+  assert.equal(intake.targetRegion, 'eastus');
+  assert.equal(intake.targetRegionMedianMs, 120);
+  assert.equal(intake.jitterMs, 8);
+  assert.equal(intake.downloadMbps, 67);
+  assert.deepEqual(intake.topRegions, [{ id: 'eastus', medianMs: 120 }]);
 });
 
 test('share export includes three measured regions by default and all only by choice', () => {
@@ -109,6 +183,7 @@ test('pasted results use only local IDs, states, and wording', () => {
     schemaVersion: 1,
     pack: { id: 'avd', version: '2026.10' },
     overall: { status: 'pass', label: 'ignore this' },
+    sentiment: { rating: 4, symptoms: ['disconnects', '<script>'] },
     findings: [{ id: 'client.sign-in', status: 'pass', required: true, value: 20, unit: 'ms', sentence: '<script>bad</script>' }, { id: 'client.wvd', status: 'blocked', required: false, value: null }, { id: 'host.wvd', status: 'pass', required: true, value: 1 }, { id: 'not-known', status: 'pass', value: 1 }]
   });
   const parsed = parseSharedResult(text, pack);
@@ -117,5 +192,15 @@ test('pasted results use only local IDs, states, and wording', () => {
   assert.equal(parsed.findings.length, 2);
   assert.equal(parsed.findings[0].sentence, 'This check answered from this network.');
   assert.equal(parsed.findings[1].status, 'unknown');
+  assert.deepEqual(parsed.sentiment, { rating: 4, symptoms: ['disconnects'] });
   assert.throws(() => parseSharedResult('{', pack));
+});
+
+test('verdict labels and sentences stay plain-language and within reading-level bounds', () => {
+  const texts = [...Object.values(labels), ...Object.values(sentences)];
+  for (const text of texts) {
+    const words = text.trim().split(/\s+/);
+    assert.ok(words.length <= 24, `sentence is concise (<= 24 words): "${text}"`);
+    assert.doesNotMatch(text, /\b(telecommunications|infrastructure|instrumentation|synchronization|remediation|unauthenticated)\b/i);
+  }
 });

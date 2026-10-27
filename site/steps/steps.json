@@ -4,6 +4,8 @@
     {
       "id": "windows.capture",
       "platform": "Windows",
+      "client": "windows-app",
+      "where": "device",
       "title": "Capture and save a screenshot",
       "actions": [
         "Press Windows logo key + Shift + S, then select the area to capture.",
@@ -16,11 +18,15 @@
         "url": "https://support.microsoft.com/en-us/windows/apps/use-snipping-tool-to-capture-screenshots",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     },
     {
       "id": "macos.capture",
       "platform": "macOS",
+      "client": "windows-app",
+      "where": "device",
       "title": "Capture and save a screenshot",
       "actions": [
         "Press Shift-Command-5 to open Screenshot.",
@@ -33,29 +39,142 @@
         "url": "https://support.apple.com/en-us/102646",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     },
     {
       "id": "avd.connection-info",
-      "platform": "Windows App",
+      "platform": "Windows",
+      "client": "windows-app",
+      "where": "session",
       "title": "Find your connection information",
       "actions": [
-        "Connect to your remote session.",
+        "Connect to your remote session in Windows App.",
         "On the connection toolbar, select the signal-strength icon to open Connection Information.",
-        "Read the Transport protocol entry. It describes this session, not the browser check."
+        "Select Details and read the Transport protocol, Round-trip time, and Available bandwidth lines. They describe this session, not the browser check."
       ],
-      "whatYouShouldSee": "The transport used by this remote session.",
-      "done": "Share the value with your helpdesk if they asked for it.",
+      "whatYouShouldSee": "The transport protocol (UDP or WebSocket) and round-trip time used by this remote session.",
+      "done": "Share the values with your helpdesk if they asked for them.",
       "source": {
         "title": "Configure RDP Shortpath: verify the transport",
         "url": "https://learn.microsoft.com/en-us/azure/virtual-desktop/configure-rdp-shortpath#verify-rdp-shortpath-is-working",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.logs.windows",
+      "platform": "Windows",
+      "client": "windows-app",
+      "where": "device",
+      "title": "Collect Windows App diagnostic logs on Windows",
+      "actions": [
+        "Open Windows App on your Windows device and select Settings (the gear icon) or About.",
+        "Select Export diagnostic logs (or Open logs folder) and save the archive to your Downloads folder."
+      ],
+      "whatYouShouldSee": "A diagnostic log folder or zip file in Downloads.",
+      "done": "Send the logs only through the support channel your helpdesk named. Never attach diagnostic logs to a public GitHub issue.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.logs.macos",
+      "platform": "macOS",
+      "client": "windows-app",
+      "where": "device",
+      "title": "Collect Windows App diagnostic logs on macOS",
+      "actions": [
+        "In Windows App on your Mac, open the Help menu in the menu bar and select Troubleshooting.",
+        "Select Export diagnostic logs and choose Downloads as the destination."
+      ],
+      "whatYouShouldSee": "A Windows App diagnostic log archive in Downloads.",
+      "done": "Send the archive only through the support channel your helpdesk named.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.logs.ios",
+      "platform": "iPadOS / iOS",
+      "client": "windows-app",
+      "where": "device",
+      "title": "Collect Windows App diagnostic logs on iPad or iPhone",
+      "actions": [
+        "Open Windows App on your iPad or iPhone and tap Settings.",
+        "Tap Troubleshooting, then tap Share diagnostic logs and save the file to Files (Downloads)."
+      ],
+      "whatYouShouldSee": "The diagnostic log archive saved in the Files app.",
+      "done": "Share the file only through your organization's approved helpdesk channel.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.logs.android",
+      "platform": "Android",
+      "client": "windows-app",
+      "where": "device",
+      "title": "Collect Windows App diagnostic logs on Android",
+      "actions": [
+        "Open Windows App on your Android device and tap Settings.",
+        "Tap Troubleshooting, then tap Share diagnostic logs and save the file to Downloads."
+      ],
+      "whatYouShouldSee": "The diagnostic log archive in Downloads.",
+      "done": "Share the file only through your organization's approved helpdesk channel.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.logs.web",
+      "platform": "Browser",
+      "client": "web",
+      "where": "device",
+      "title": "Collect Windows App web client diagnostic logs",
+      "actions": [
+        "In the browser tab running windows.cloud.microsoft, select Settings (the gear icon) in the top bar.",
+        "Open About or Troubleshooting and select Download diagnostic logs to save the log file to Downloads."
+      ],
+      "whatYouShouldSee": "A web client log file in Downloads.",
+      "done": "Send the file only through the support channel your helpdesk named.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     },
     {
       "id": "teams.logs.windows",
       "platform": "Windows",
+      "client": "windows-app",
+      "where": "session",
       "title": "Collect Teams support logs",
       "actions": [
         "In Teams inside the remote session, press Ctrl + Alt + Shift + 1.",
@@ -68,11 +187,15 @@
         "url": "https://learn.microsoft.com/en-us/microsoftteams/log-files",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     },
     {
       "id": "teams.logs.macos",
       "platform": "macOS",
+      "client": "windows-app",
+      "where": "device",
       "title": "Collect Teams support logs",
       "actions": [
         "In Teams, open the Help menu and select Collect support files, or press Option + Command + Shift + 1.",
@@ -85,11 +208,15 @@
         "url": "https://learn.microsoft.com/en-us/microsoftteams/log-files",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     },
     {
       "id": "avd.shortpath-test",
       "platform": "Windows",
+      "client": "windows-app",
+      "where": "device",
       "title": "Run the Microsoft Shortpath test",
       "actions": [
         "Open Microsoft's RDP Shortpath guide and find Check client device STUN/TURN server connectivity and NAT type.",
@@ -102,6 +229,50 @@
         "url": "https://learn.microsoft.com/en-us/azure/virtual-desktop/configure-rdp-shortpath#check-client-device-stunturn-server-connectivity-and-nat-type",
         "checkedAt": "2026-10-25"
       },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.mmr-logs",
+      "platform": "Windows",
+      "client": "windows-app",
+      "where": "session",
+      "title": "Collect Multimedia Redirection (MMR) logs",
+      "actions": [
+        "Inside the remote browser where video playback is redirected, open the Azure Virtual Desktop Multimedia Redirection extension popup.",
+        "Select Collect logs (or Export logs) and save the log file to Downloads."
+      ],
+      "whatYouShouldSee": "An MMR diagnostic log file in Downloads.",
+      "done": "Send the file only through your helpdesk's approved support channel.",
+      "source": {
+        "title": "Troubleshoot Multimedia Redirection for Azure Virtual Desktop",
+        "url": "https://learn.microsoft.com/en-us/azure/virtual-desktop/multimedia-redirection-troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
+    },
+    {
+      "id": "avd.log-bundle-prep",
+      "platform": "Windows",
+      "client": "windows-app",
+      "where": "device",
+      "title": "Prepare files for the signed log bundle collector",
+      "actions": [
+        "Download avd-linecheck-result.json (and optional comments.txt or captures) from the network check into your Downloads folder.",
+        "If your administrator gave you the signed avd-current-state client log collector script, run it on your device so it packages your result and client logs into one archive."
+      ],
+      "whatYouShouldSee": "Your saved result files in Downloads ready for the collector script.",
+      "done": "Review the resulting bundle before sending it to your helpdesk through its approved support channel.",
+      "source": {
+        "title": "Troubleshoot Windows App",
+        "url": "https://learn.microsoft.com/en-us/windows-app/troubleshoot",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
       "assets": []
     }
   ]

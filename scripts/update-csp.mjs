@@ -1,8 +1,10 @@
+/* Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. MIT. */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { connectOrigins } from '../site/lib/packs.mjs';
+import { createRequire } from 'node:module';
 
+const { connectOrigins } = createRequire(import.meta.url)('../site/engine.js');
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const htmlPath = join(root, 'site', 'index.html');
 const readJson = (path) => JSON.parse(readFileSync(join(root, 'site', 'packs', path), 'utf8'));
