@@ -140,7 +140,7 @@ test('the portal is a wizard: every step has its screen, a title, one purpose li
     const sec = (html.match(new RegExp(`<section class="wz-stage[^"]*" id="stage-${id}" data-step="${id}"[^>]*>([\\s\\S]*?)</section>`)) || [])[1];
     assert.ok(sec, `${id} has a screen`);
     assert.match(sec, new RegExp(`^\\s*<h2 id="${id}-title">[^<]+</h2>\\s*<p class="purpose">`), `${id} opens with its title and purpose line`);
-    const purpose = sec.match(/<p class="purpose">([\s\S]*?)<\/p>/)[1].replace(/<[^>]+>/g, '');
+    const purpose = sec.match(/<p class="purpose">([^<]+)<\/p>/)[1];
     assert.ok(purpose.length <= 100, `${id}: the purpose line is one short line`);
   }
   assert.equal([...html.matchAll(/<section class="wz-stage/g)].length, steps.length, 'one screen per step');
