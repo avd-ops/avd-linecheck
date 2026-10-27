@@ -1,0 +1,67 @@
+{
+  "source": {
+    "repo": "avd-ops/avd-landing-zone",
+    "path": "site/portal/portal-page.js",
+    "commit": "901deb119f7256c40a617bc30d2c7fa73edc03b3"
+  },
+  "avdTargetSource": {
+    "sourceRecord": "avd-ops/avd-assess@d8b6983b6fd947eb795cd5945e30e54cf1dc194b:references/avd-prerequisites.yaml",
+    "url": "https://learn.microsoft.com/azure/virtual-desktop/prerequisites",
+    "gitCommitId": "98f726730d8d63d52a4fea0415ab8eaffffcd975",
+    "updatedAt": "2026-09-30"
+  },
+  "avdTargetRegionIds": [
+    "australiaeast", "canadacentral", "canadaeast", "centralindia", "centralus", "eastasia",
+    "eastus", "eastus2", "japaneast", "japanwest", "northcentralus", "northeurope",
+    "southafricanorth", "southcentralus", "southeastasia", "uksouth", "ukwest",
+    "westcentralus", "westeurope", "westus", "westus2", "westus3"
+  ],
+  "measurement": {
+    "method": "GET",
+    "samples": 5,
+    "timeoutMs": 4000,
+    "concurrency": 3,
+    "top": 5
+  },
+  "hostTemplate": "{region}.api.cognitive.microsoft.com",
+  "regions": [
+    { "id": "eastus", "name": "East US", "geo": "Americas" },
+    { "id": "eastus2", "name": "East US 2", "geo": "Americas" },
+    { "id": "centralus", "name": "Central US", "geo": "Americas" },
+    { "id": "northcentralus", "name": "North Central US", "geo": "Americas" },
+    { "id": "southcentralus", "name": "South Central US", "geo": "Americas" },
+    { "id": "westcentralus", "name": "West Central US", "geo": "Americas" },
+    { "id": "westus", "name": "West US", "geo": "Americas" },
+    { "id": "westus2", "name": "West US 2", "geo": "Americas" },
+    { "id": "westus3", "name": "West US 3", "geo": "Americas" },
+    { "id": "canadacentral", "name": "Canada Central", "geo": "Americas" },
+    { "id": "canadaeast", "name": "Canada East", "geo": "Americas" },
+    { "id": "brazilsouth", "name": "Brazil South", "geo": "Americas" },
+    { "id": "northeurope", "name": "North Europe", "geo": "Europe" },
+    { "id": "westeurope", "name": "West Europe", "geo": "Europe" },
+    { "id": "uksouth", "name": "UK South", "geo": "Europe" },
+    { "id": "ukwest", "name": "UK West", "geo": "Europe" },
+    { "id": "francecentral", "name": "France Central", "geo": "Europe" },
+    { "id": "germanywestcentral", "name": "Germany West Central", "geo": "Europe" },
+    { "id": "switzerlandnorth", "name": "Switzerland North", "geo": "Europe" },
+    { "id": "norwayeast", "name": "Norway East", "geo": "Europe" },
+    { "id": "swedencentral", "name": "Sweden Central", "geo": "Europe" },
+    { "id": "polandcentral", "name": "Poland Central", "geo": "Europe" },
+    { "id": "italynorth", "name": "Italy North", "geo": "Europe" },
+    { "id": "spaincentral", "name": "Spain Central", "geo": "Europe" },
+    { "id": "eastasia", "name": "East Asia", "geo": "Asia Pacific" },
+    { "id": "southeastasia", "name": "Southeast Asia", "geo": "Asia Pacific" },
+    { "id": "japaneast", "name": "Japan East", "geo": "Asia Pacific" },
+    { "id": "japanwest", "name": "Japan West", "geo": "Asia Pacific" },
+    { "id": "koreacentral", "name": "Korea Central", "geo": "Asia Pacific" },
+    { "id": "centralindia", "name": "Central India", "geo": "Asia Pacific" },
+    { "id": "southindia", "name": "South India", "geo": "Asia Pacific" },
+    { "id": "australiaeast", "name": "Australia East", "geo": "Asia Pacific" },
+    { "id": "newzealandnorth", "name": "New Zealand North", "geo": "Asia Pacific" },
+    { "id": "indonesiacentral", "name": "Indonesia Central", "geo": "Asia Pacific" },
+    { "id": "malaysiawest", "name": "Malaysia West", "geo": "Asia Pacific" },
+    { "id": "uaenorth", "name": "UAE North", "geo": "Middle East & Africa" },
+    { "id": "qatarcentral", "name": "Qatar Central", "geo": "Middle East & Africa" },
+    { "id": "southafricanorth", "name": "South Africa North", "geo": "Middle East & Africa" }
+  ]
+}

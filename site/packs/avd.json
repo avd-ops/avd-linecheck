@@ -1,0 +1,38 @@
+{
+  "id": "avd",
+  "version": "2026.10",
+  "title": "Azure Virtual Desktop",
+  "endpointSource": {
+    "repo": "avd-ops/avd-assess",
+    "path": "endpoints.json",
+    "commit": "d8b6983b6fd947eb795cd5945e30e54cf1dc194b",
+    "sha256": "eb8a1aed7f3c285006c05164825bbfc061c2a3fc94a58f1a68d8c6098f699472"
+  },
+  "endpointIds": [
+    "client.sign-in",
+    "client.fwlink",
+    "client.shortener",
+    "client.docs",
+    "client.privacy",
+    "client.graph",
+    "client.connection-center",
+    "client.windows365",
+    "client.ecs"
+  ],
+  "hosts": [],
+  "regionalProbe": true,
+  "thresholds": [
+    { "below": 100, "state": "pass", "claim": "ref:avd-insights-use-cases#rtt-ideal-100-poor-200" },
+    { "below": 150, "state": "warn", "claim": "ref:avd-prerequisites#rtt-under-150" },
+    { "atMost": 200, "state": "warn", "claim": "ref:avd-connection-quality#rtt-bands" },
+    { "otherwise": "fail", "claim": "ref:avd-connection-quality#rtt-bands" }
+  ],
+  "download": { "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin", "bytes": 8388608, "claim": "ref:rdp-bandwidth#monitor-real-users" },
+  "primaryHostId": "client.sign-in",
+  "stun": [],
+  "limits": "Reached means this browser completed DNS, a connection and TLS to that host and got a response. It does not test sign-in, access to a desktop, wildcard AVD endpoints, UDP, or the session host. A proxy that answers with its own block page also counts as reached. Time to a Microsoft front door is not round trip to the session host.",
+  "links": {
+    "endpoints": "https://learn.microsoft.com/azure/virtual-desktop/required-fqdn-endpoint",
+    "shortpath": "https://learn.microsoft.com/azure/virtual-desktop/configure-rdp-shortpath"
+  }
+}

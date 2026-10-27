@@ -1,0 +1,11 @@
+{
+  "id": "generic",
+  "version": "1.0",
+  "title": "Generic network check",
+  "endpointIds": [],
+  "hosts": [],
+  "regionalProbe": true,
+  "thresholds": [],
+  "download": { "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin", "bytes": 8388608, "claim": null },
+  "limits": "A browser measures this page's path to the selected regional endpoints. It does not test a hosted desktop, a session host, or an application."
+}

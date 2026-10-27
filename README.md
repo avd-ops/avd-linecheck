@@ -2,7 +2,7 @@
 
 Part of [avd-ops](https://avd-ops.dev/), the open toolkit for Azure Virtual Desktop.
 
-A one-button network check for people who work on a virtual desktop. Open a link, press one button, and get a plain-language verdict about the network you are on, plus a result you can hand to your helpdesk. It runs entirely in your browser: no sign-in, no keys, and nothing leaves the page unless you copy or download the result. Azure Virtual Desktop is the first set of checks; the engine is generic, so anyone with a hosted desktop can add their own.
+A one-button network check for people who work on a virtual desktop. Open a link, press one button, and get a plain-language verdict about the network you are on, plus a result you can hand to your helpdesk. It runs in your browser with no sign-in or keys. When you run it, the listed probe hosts receive ordinary network request metadata; the result itself is never uploaded. Azure Virtual Desktop is the first set of checks; the engine is generic, so anyone with a hosted desktop can add their own.
 
 > [!WARNING]
 > **Personal project. Research and learning only. Not for production. No warranty.**
@@ -14,31 +14,46 @@ A one-button network check for people who work on a virtual desktop. Open a link
 
 ## Status
 
-**Design only. Nothing is built yet.** The design is [docs/spec.md](docs/spec.md): what a browser can and cannot measure, the AVD checks and their cited thresholds, privacy, hosting, prior art, and the open questions in section 15. Section 17 designs a companion log bundle (Windows App, Teams and performance logs, zipped to your Downloads folder, never uploaded), which is built in [avd-current-state](https://github.com/avd-ops/avd-current-state) as part of its local collector.
+**The v0 and v1 static portal is implemented on the shared `avd-ops` design system (`ds-v2.7.0`) and portal engine (`pe-v1.1.0`).** The four-step wizard (`Run check`, `Verdict`, `Add context`, `Share or read`), generic and AVD packs, phased probe execution with deadlines, vantage and proxy/tunnel caveats, user context (sentiment, symptoms, in-browser window capture, private `comments.txt`), assessment intake export (`avd-assess-user-network/v1`), and text-first guided steps are in [`site/`](site/). Spikes S1 through S4 are recorded in [spikes/README.md](spikes/README.md). No guided-step screenshots or recordings are included yet. The design baseline is [docs/spec.md](docs/spec.md). Its optional v2 server probe and listing on avd-ops.dev remain out of scope. Section 17's companion log bundle is specified for [avd-current-state](https://github.com/avd-ops/avd-current-state); [the local collector spec](https://github.com/avd-ops/avd-current-state/blob/main/docs/local-collector-spec.md) and [PR #40](https://github.com/avd-ops/avd-current-state/pull/40) describe the design, not an implementation.
 
 | Version | Delivers |
 |---|---|
-| v0 | The static page with a generic pack: reachability, region ranking, download sufficiency, jitter and stalls, a verdict, an export with no personal data, and a view that reads a pasted result |
-| v1 | The AVD pack: Microsoft's published end-user endpoints and round-trip bands, cited at a pinned commit |
-| Log bundle | Built in avd-current-state: a script that collects AVD, Teams and performance logs from your device or your remote session into one zip in Downloads |
+| v0 | Implemented: generic pack, selectable region ranking, download sufficiency (capped at 67 Mbit/s) with loaded latency, serial jitter and stalls, verdict, share-safe export and paste view |
+| v1 | Implemented: pinned AVD endpoint pack, cited RTT bands, target-region check, vantage check, proxy/tunnel caveats, relay geography note, user context (sentiment, window capture, `comments.txt`), assessment intake export, and text-first guided steps |
+| Log bundle | Designed for avd-current-state; implementation and signed release are still pending there |
 | v2 | An optional server probe, in separately costed pieces |
 
 ## Layout
 
 ```text
-docs/spec.md                  the design (moved here from avd-ops)
-spikes/                       throwaway pages for the spikes in spec section 13, published to GitHub Pages
-tests/                        node --test: repo foundations (notice, license, links, leak patterns), spike page rules
-.github/workflows/ci.yml      runs the tests on every pull request
+docs/spec.md                  the design baseline (moved here from avd-ops)
+site/                         static portal, packs, pinned design/engine assets and text-first steps
+  index.html                  four-step wizard: check, verdict, context, and share/read
+  engine.js                   pack validation, download sufficiency and phased probes on AvdOpsEngine.probe
+  verdict.js                  pure classification, RTT bands, vantage, caveats and plain-language wording
+  export.js                   pure export builder, scrubber, intake helper and shared-result parser
+  app.js                      page wiring, wizard stepper, sheets, capture and comments
+  packs/                      schema, generic and AVD packs, pinned endpoint and region data
+  steps/                      text-first guides (`index.html`, `steps.json`, `steps.js`); media waits for approved captures
+  assets/                     design system v2.7.0 (`design-system.lock.json`) and portal engine v1.1.0 (`engine.lock.json`)
+spikes/                       spike pages and recorded readings; not published
+tests/                        node --test: network, packs/CSP, results/verdict/export and site contracts
+scripts/make-blob.mjs         generate a hash-named 8 MiB download file
+scripts/update-csp.mjs        regenerate the page allowlist after changing packs
+.github/workflows/            ci.yml, pages.yml, served.yml
 ```
 
-The full layout the spec plans (the page in `site/`, packs, the collector) is in [docs/spec.md, section 12.4](docs/spec.md#124-repository-layout).
+The page is static and has no build step or runtime dependency. Its tests keep the CSP aligned with the shipped packs and verify the vendored design-system and portal-engine lock hashes. The Pages workflow publishes `site/`.
+
+Regional ranking follows the deployment portal: all four geography groups are selected by default, each can be turned off, and the results rank every selected region. Each region gets a warm-up and five timed samples, with three regions checked concurrently. The table shows the top five by default, can expand to all results, and a selected row sets the target-region check. This implementation supersedes the earlier 12-region cap in [docs/spec.md](docs/spec.md#42-region-latency).
+
+In a fork, add DNS hostnames on HTTPS port 443 to `site/packs/generic.json`, run `node scripts/update-csp.mjs`, then run the tests. Hosts outside the shipped Microsoft suffix list are marked as custom in shared results.
 
 ## Prior art and credits
 
 Each one is linked and described in our own words; licenses are what the project's own license file says, read before anything is reused ([spec section 11](docs/spec.md#11-prior-art-and-what-to-reuse)).
 
-- **[avd-landing-zone](https://github.com/avd-ops/avd-landing-zone)** (MIT, same family): its deployment portal's browser latency test (warm-up request, timed `no-cors` fetches, median) and reachability probe, with their honest-limits wording, are the starting point for this engine (`site/portal/portal-page.js` and decisions 0003 and 0014 at commit `68ffda5`).
+- **[avd-ops portal engine](https://github.com/avd-ops/avd-ops)** and **[avd-landing-zone](https://github.com/avd-ops/avd-landing-zone)** (MIT, same family): the shared portal engine (`core.js`, `bands.js`, `probe.js`, `redact.js` at `pe-v1.1.0`) and the deployment portal's browser latency test (warm-up request, timed `no-cors` fetches, median) and reachability probe, with their honest-limits wording (decisions 0003 and 0014).
 - **[@cloudflare/speedtest](https://github.com/cloudflare/speedtest)**: the loaded-latency method.
 - **[LibreSpeed](https://github.com/librespeed/speedtest)**: the separate stability test idea, and its smoothed jitter as the comparison for our median-based one (ideas only; no code).
 - **Microsoft Learn**: the required endpoints, round-trip guidance, RDP Shortpath, Windows App and Teams log locations this tool cites, each at a pinned version through [avd-assess](https://github.com/avd-ops/avd-assess).

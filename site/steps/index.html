@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- avd-linecheck text-first guides, design system v2.7.0. Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Guided steps | avd-linecheck</title>
+<meta name="description" content="Text-first steps for common virtual desktop troubleshooting tasks.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/avd-ops.css">
+<link rel="stylesheet" href="../assets/avd-ops-portal.css">
+<link rel="stylesheet" href="../assets/avd-ops-shell.css">
+<link rel="stylesheet" href="../linecheck.css">
+<script src="../assets/theme.js"></script>
+</head>
+<body class="portal shell">
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="bar-in"><a class="brand" href="https://avd-ops.dev/"><img class="mark" src="../assets/brand/mark.svg" alt="" width="44" height="44"><span class="name"><span class="word">avd-ops</span><span class="tag">Deploy quietly</span></span></a>
+<nav class="switcher" aria-label="avd-ops tools"><a href="https://avd-ops.dev/">Docs</a><a href="https://deploy.avd-ops.dev/portal/">Deploy</a><a href="https://assess.avd-ops.dev/portal/">Assess</a><a href="../index.html" aria-current="page">Linecheck</a></nav>
+<details class="notice" id="disclaimer"><summary><strong class="long">Personal project. Research and learning only. Not for production. No warranty.</strong><strong class="short">Not for production</strong><span class="more">Read the notice</span></summary>
+<div class="full"><ul><li><strong>Personal project, not for production.</strong> Provided "as is," without warranty of any kind (<a href="https://github.com/avd-ops/avd-linecheck/blob/main/LICENSE">MIT License</a>).</li>
+<li>Built on my own time for research and learning. Not affiliated with, endorsed by or supported by the author's employer, Liquidware or Microsoft, and not an official Microsoft product.</li>
+<li>Do not rely on this for production decisions. Not a certification, a compliance attestation or a security audit. A browser measures only part of a connection.</li>
+<li><strong>Contributions and forks are welcome and encouraged.</strong> See <a href="https://github.com/avd-ops/avd-linecheck/blob/main/CONTRIBUTING.md">Contributing</a>.</li></ul></div></details>
+<div class="tools"><button class="iconbtn theme" type="button" aria-label="Switch theme"><svg class="sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10H4M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.4A7 7 0 0 1 7.6 3.5a7 7 0 1 0 8.9 8.9Z"/></svg></button></div></div></header>
+
+<div class="layout solo"><main id="main"><div class="col">
+<p class="eyebrow">Text-first help</p>
+<h1>Guided steps</h1>
+<p class="lede">One action at a time. These guides use text and link to current vendor instructions; no screenshots are included until reviewed captures exist.</p>
+<p><a class="cta ghost secondary" href="../index.html">&larr; Back to the network check</a></p>
+
+<section class="card step-guide" aria-labelledby="guide-title" aria-live="polite">
+  <div class="step-controls">
+    <div>
+      <label for="platform-select">Not your device? Platform</label>
+      <select id="platform-select">
+        <option value="">All platforms</option>
+        <option value="Windows">Windows</option>
+        <option value="macOS">macOS</option>
+        <option value="iPadOS / iOS">iPadOS / iOS</option>
+        <option value="Android">Android</option>
+        <option value="Browser">ChromeOS / Linux / Browser</option>
+      </select>
+    </div>
+    <div>
+      <label for="client-select">Client app</label>
+      <select id="client-select">
+        <option value="">All clients</option>
+        <option value="windows-app">Windows App</option>
+        <option value="web">Browser client (windows.cloud.microsoft)</option>
+        <option value="remote-desktop-retired">Remote Desktop client (retired)</option>
+      </select>
+    </div>
+    <div>
+      <label for="where-select">Where to run</label>
+      <select id="where-select">
+        <option value="">On device or in session</option>
+        <option value="device">On your own device</option>
+        <option value="session">Inside the remote session</option>
+      </select>
+    </div>
+  </div>
+
+  <p id="ipad-mac-prompt" class="step-banner" hidden>
+    <strong>iPad or Mac?</strong> Safari on iPad reports a Mac user agent.
+    <button type="button" class="linkbtn" id="choose-ipad">Switch to iPadOS / iOS</button> &middot;
+    <button type="button" class="linkbtn" id="choose-mac">Keep macOS</button>
+  </p>
+
+  <div id="retired-banner" class="step-banner" role="note" hidden>
+    <strong>Move to Windows App:</strong> The Remote Desktop client is retired or retiring across platforms. Microsoft now supports <a href="https://learn.microsoft.com/en-us/windows-app/overview">Windows App</a> for Azure Virtual Desktop and Windows 365. No screenshots are kept for the retired client.
+  </div>
+
+  <div id="freshness-banner" class="step-banner" role="note" hidden></div>
+
+  <div class="field">
+    <label for="step-select">Choose a guide</label>
+    <select id="step-select" disabled><option>Loading guides...</option></select>
+  </div>
+  <p id="step-count" class="muted gap"></p>
+  <h2 id="guide-title">Guides are loading</h2>
+  <ol id="guide-actions"></ol>
+  <p><strong>What you should see:</strong> <span id="guide-see"></span></p>
+  <p><strong>Done:</strong> <span id="guide-done"></span></p>
+  <p><a id="guide-source" href="https://learn.microsoft.com/">Open the official instructions</a></p>
+  <nav class="step-nav" aria-label="Guide navigation">
+    <button id="step-back" class="cta ghost secondary" type="button" disabled>&larr; Previous</button>
+    <button id="step-next" class="cta" type="button" disabled>Next &rarr;</button>
+  </nav>
+</section>
+
+<noscript><p>This guide chooser needs JavaScript. Open the vendor instructions directly: <a href="https://support.microsoft.com/en-us/windows/apps/use-snipping-tool-to-capture-screenshots">Windows screenshots</a>, <a href="https://support.apple.com/en-us/102646">Mac screenshots</a>, <a href="https://learn.microsoft.com/en-us/azure/virtual-desktop/configure-rdp-shortpath">RDP Shortpath</a>, and <a href="https://learn.microsoft.com/en-us/microsoftteams/log-files">Teams logs</a>.</p></noscript>
+</div></main></div>
+
+<div class="after">
+  <footer class="disclaimer">Personal project, not for production. Provided "as is," without warranty of any kind, under the <a href="https://github.com/avd-ops/avd-linecheck/blob/main/LICENSE">MIT License</a>. Not affiliated with, endorsed by or supported by the author's employer, Liquidware or Microsoft. Contributions and forks are welcome: <a href="https://github.com/avd-ops/avd-linecheck">avd-linecheck on GitHub</a>.</footer>
+  <p class="credit">A <a href="https://prignano.ai/">prignano.ai</a> production</p>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!doctype html>
+<!-- avd-linecheck, design system v2.7.0. Personal project, not for production, as is; not affiliated with the author's employer, Liquidware or Microsoft. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Network check | avd-linecheck</title>
+<meta name="description" content="A browser-based network check for virtual desktop users. Everything stays in your browser.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self' https://aka.ms https://australiaeast.api.cognitive.microsoft.com https://brazilsouth.api.cognitive.microsoft.com https://canadacentral.api.cognitive.microsoft.com https://canadaeast.api.cognitive.microsoft.com https://centralindia.api.cognitive.microsoft.com https://centralus.api.cognitive.microsoft.com https://eastasia.api.cognitive.microsoft.com https://eastus.api.cognitive.microsoft.com https://eastus2.api.cognitive.microsoft.com https://ecs.office.com https://francecentral.api.cognitive.microsoft.com https://germanywestcentral.api.cognitive.microsoft.com https://go.microsoft.com https://graph.microsoft.com https://indonesiacentral.api.cognitive.microsoft.com https://italynorth.api.cognitive.microsoft.com https://japaneast.api.cognitive.microsoft.com https://japanwest.api.cognitive.microsoft.com https://koreacentral.api.cognitive.microsoft.com https://learn.microsoft.com https://login.microsoftonline.com https://malaysiawest.api.cognitive.microsoft.com https://newzealandnorth.api.cognitive.microsoft.com https://northcentralus.api.cognitive.microsoft.com https://northeurope.api.cognitive.microsoft.com https://norwayeast.api.cognitive.microsoft.com https://polandcentral.api.cognitive.microsoft.com https://privacy.microsoft.com https://qatarcentral.api.cognitive.microsoft.com https://southafricanorth.api.cognitive.microsoft.com https://southcentralus.api.cognitive.microsoft.com https://southeastasia.api.cognitive.microsoft.com https://southindia.api.cognitive.microsoft.com https://spaincentral.api.cognitive.microsoft.com https://swedencentral.api.cognitive.microsoft.com https://switzerlandnorth.api.cognitive.microsoft.com https://uaenorth.api.cognitive.microsoft.com https://uksouth.api.cognitive.microsoft.com https://ukwest.api.cognitive.microsoft.com https://westcentralus.api.cognitive.microsoft.com https://westeurope.api.cognitive.microsoft.com https://westus.api.cognitive.microsoft.com https://westus2.api.cognitive.microsoft.com https://westus3.api.cognitive.microsoft.com https://windows.cloud.microsoft https://windows365.microsoft.com; base-uri 'none'; form-action 'none'; object-src 'none'; manifest-src 'self'; webrtc 'block'">
+<link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/avd-ops.css">
+<link rel="stylesheet" href="assets/avd-ops-portal.css">
+<link rel="stylesheet" href="assets/avd-ops-shell.css">
+<link rel="stylesheet" href="linecheck.css">
+<script src="assets/theme.js"></script>
+</head>
+<body class="portal shell">
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="bar-in"><a class="brand" href="https://avd-ops.dev/"><img class="mark" src="assets/brand/mark.svg" alt="" width="44" height="44"><span class="name"><span class="word">avd-ops</span><span class="tag">Deploy quietly</span></span></a>
+<nav class="switcher" aria-label="avd-ops tools"><a href="https://avd-ops.dev/">Docs</a><a href="https://deploy.avd-ops.dev/portal/">Deploy</a><a href="https://assess.avd-ops.dev/portal/">Assess</a><a href="./" aria-current="page">Linecheck</a></nav>
+<details class="notice" id="disclaimer"><summary><strong class="long">Personal project. Research and learning only. Not for production. No warranty.</strong><strong class="short">Not for production</strong><span class="more">Read the notice</span></summary>
+<div class="full"><ul><li><strong>Personal project, not for production.</strong> Provided "as is," without warranty of any kind (<a href="https://github.com/avd-ops/avd-linecheck/blob/main/LICENSE">MIT License</a>).</li>
+<li>Built on my own time for research and learning. Not affiliated with, endorsed by or supported by the author's employer, Liquidware or Microsoft, and not an official Microsoft product.</li>
+<li>Do not rely on this for production decisions. Not a certification, a compliance attestation or a security audit. A browser measures only part of a connection.</li>
+<li><strong>Contributions and forks are welcome and encouraged.</strong> See <a href="https://github.com/avd-ops/avd-linecheck/blob/main/CONTRIBUTING.md">Contributing</a>.</li></ul></div></details>
+<div class="tools"><button class="iconbtn theme" type="button" aria-label="Switch theme"><svg class="sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10H4M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6"/></svg><svg class="moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.4A7 7 0 0 1 7.6 3.5a7 7 0 1 0 8.9 8.9Z"/></svg></button></div></div></header>
+
+<button type="button" class="sheet-backdrop hidden" id="sheet-backdrop" aria-label="Close" tabindex="-1"></button>
+<section class="sheet hidden" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="panel-head"><h2 id="settings-title">Check settings</h2><button type="button" class="linkbtn" id="settings-close">Close</button></div>
+  <p class="muted">Saved only in this browser when you choose a default pack.</p>
+  <label class="field gap" for="default-pack"><span>Default check pack</span>
+    <select id="default-pack"><option value="">Ask each time (Generic default)</option><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option></select>
+  </label>
+  <label class="switch gap"><input type="checkbox" id="lite-mode"><span><strong>Lite mode (skip the 8 MiB download check)</strong><br><span class="muted">Use on metered or cellular links. You can also add <code>?lite</code> to the page URL.</span></span></label>
+  <div class="actions">
+    <button type="button" class="secondary" id="reset">Start over</button>
+    <span class="muted">Clears the saved pack preference and current check state from this browser.</span>
+  </div>
+</section>
+
+<section class="sheet hidden" id="report-panel" role="dialog" aria-modal="true" aria-labelledby="report-title">
+  <div class="panel-head"><h2 id="report-title">Report a problem</h2><button type="button" class="linkbtn" id="report-close">Close</button></div>
+  <p>This opens a <strong>public</strong> GitHub issue. Your browser redacts the report first. Read it before you send it.</p>
+  <details class="more"><summary>What gets removed</summary>
+    <p>Anything that looks like a password, key or token; email addresses and UPNs; tenant and domain names; IDs; public IP addresses; user names in paths; and the words you add below. Nothing leaves this page until you submit the issue on GitHub, which needs a GitHub account.</p>
+  </details>
+  <label class="field gap" for="report-desc"><span>What were you doing, and what went wrong?</span><textarea class="prose" id="report-desc" rows="3"></textarea></label>
+  <label class="switch gap"><input type="checkbox" id="report-output" checked><span><strong>Include the current check summary</strong></span></label>
+  <label class="field gap" for="report-terms"><span>Also remove (comma-separated: company, server and app names, anything else private)</span><input type="text" id="report-terms" autocomplete="off"></label>
+  <label class="field gap" for="report-body"><span>The report, as it will be sent (you can edit it)</span><textarea id="report-body" spellcheck="false"></textarea></label>
+  <p class="muted" id="report-summary" role="status"></p>
+  <label class="switch"><input type="checkbox" id="report-ok"><span><strong>I have read the report and it holds nothing private</strong></span></label>
+  <div class="actions">
+    <button type="button" id="report-submit" disabled>Open GitHub issue</button>
+    <button type="button" class="secondary" id="report-copy">Copy report</button>
+    <span class="muted" id="report-status" role="status"></span>
+  </div>
+</section>
+
+<main class="wz-layout" id="main">
+  <header class="top wz-rail">
+    <div class="title"><h1>AVD linecheck</h1>
+      <p class="purpose">Checks the network you are on from this browser, then prepares a result you can share with your helpdesk if you choose.</p></div>
+    <ol class="wz-list" id="steps" aria-label="Check progress"></ol>
+    <ol class="wz-progress" id="steps-bar" aria-label="Check progress"></ol>
+    <div class="toplinks wz-tools">
+      <a class="wz-tool" href="steps/index.html" title="Text-first guided steps"><span class="t">Guided steps</span></a>
+      <button type="button" class="wz-tool" id="settings-link" aria-controls="settings-panel" aria-expanded="false" title="Check settings"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M13 4h1M2 12h1M7 12h7"/><circle cx="11" cy="4" r="2"/><circle cx="5" cy="12" r="2"/></svg><span class="t">Settings</span></button>
+      <button type="button" class="wz-tool" id="report-link" aria-controls="report-panel" aria-expanded="false" title="Report a problem"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14V2.5h8.5l-1.8 3 1.8 3H3"/></svg><span class="t">Report a problem</span></button>
+    </div>
+  </header>
+  <div class="wz-main">
+
+  <section class="wz-stage" id="stage-check" data-step="check" aria-labelledby="check-title">
+    <h2 id="check-title">Check your connection</h2>
+    <p class="purpose">Choose a check pack and optional target region, then run the check on your own device.</p>
+    <p class="run-hint">Run this on your own device, not inside the remote desktop.</p>
+    <div class="setup">
+      <div class="row">
+        <div class="field">
+          <label for="pack-select"><span>Check pack</span></label>
+          <select id="pack-select"><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option></select>
+        </div>
+        <div class="field" id="region-field">
+          <label id="region-label" for="region-select"><span>Region to compare </span><span class="muted">optional</span></label>
+          <select id="region-select"><option value="">No region selected</option></select>
+        </div>
+      </div>
+      <p id="pack-warning" class="pack-warning" role="note" hidden>This fork checks custom hosts. A shared result may name your organization; review it before sharing publicly.</p>
+      <div id="region-control" class="gap">
+        <p id="region-help" class="muted">All geographies start selected. A selected target region is included even if its geography is unchecked.</p>
+        <fieldset class="geo-filter">
+          <legend>Regions to test</legend>
+          <label><input type="checkbox" name="region-geo" value="Americas" checked> Americas</label>
+          <label><input type="checkbox" name="region-geo" value="Europe" checked> Europe</label>
+          <label><input type="checkbox" name="region-geo" value="Asia Pacific" checked> Asia Pacific</label>
+          <label><input type="checkbox" name="region-geo" value="Middle East & Africa" checked> Middle East &amp; Africa</label>
+        </fieldset>
+      </div>
+      <noscript><p>This network check needs JavaScript. The <a href="steps/index.html">text-first guided steps</a> are still available.</p></noscript>
+      <div class="actions">
+        <button class="cta" id="run-check" type="button" disabled>Check my connection</button>
+        <p id="run-state" class="run-state" role="status" aria-live="polite">Nothing runs until you press the button.</p>
+      </div>
+      <progress id="progress" max="1" value="0" aria-label="Check progress" hidden></progress>
+    </div>
+    <details class="more targets"><summary>What this page contacts</summary>
+      <p>The page itself and the regional endpoints listed for the selected pack. The AVD pack also checks the listed AVD end-user hosts. Each contacted service receives the public IP address at your network's edge (which may be a proxy or VPN) and your browser user-agent, as with any visit. The result file is not uploaded.</p>
+      <p>The full check downloads an 8 MiB file from this site. Add <code>?lite</code> to the link or use Settings to skip that download.</p>
+      <div class="table-wrap"><table class="kv"><thead><tr><th scope="col">Target</th><th scope="col">When</th><th scope="col">Why</th></tr></thead><tbody><tr><td>This site (<code>self</code>)</td><td>Page load and check</td><td>Serves the page and the 8 MiB download file</td></tr><tr><td>Regional HTTPS endpoints in the pack</td><td>When you press the button</td><td>Rank Azure regions by HTTPS round-trip time from this browser</td></tr><tr><td>Pack hosts (Microsoft sign-in and AVD portal hosts)</td><td>When you press the button with the AVD pack</td><td>Check whether this browser can reach those hosts over HTTPS</td></tr></tbody></table></div>
+      <ul id="target-list"></ul>
+    </details>
+    <details class="more limits"><summary>What a browser can and cannot tell you</summary>
+      <p>This check measures HTTPS requests from this browser. It does not test sign-in, your access to a desktop, wildcard endpoints, UDP or the session host. A proxy or content blocker may affect the result. Regional timings are to a service endpoint, not to your desktop host.</p>
+      <p id="avd-links" hidden><a href="https://learn.microsoft.com/azure/virtual-desktop/required-fqdn-endpoint">AVD endpoint requirements</a> &middot; <a href="https://learn.microsoft.com/azure/virtual-desktop/configure-rdp-shortpath">RDP Shortpath guidance</a></p>
+    </details>
+  </section>
+
+  <section class="wz-stage hidden" id="stage-results" data-step="results" aria-labelledby="results-title">
+    <h2 id="results-title">Connection check</h2>
+    <p class="purpose">Review the verdict, the individual checks, and the regional latency ranking from this browser.</p>
+    <p id="results-empty" class="muted">Run the check in step 1 first to see your verdict and regional latency ranking.</p>
+    <div id="results" class="results" hidden>
+      <div class="reply" id="verdict-reply">
+        <p id="overall" class="bl overall" role="status" aria-live="polite"></p>
+        <p id="overall-note" class="muted"></p>
+        <ul id="caveat-list" class="caveat-list" hidden></ul>
+        <p id="relay-note" class="relay-note" hidden></p>
+      </div>
+      <ul id="finding-list" class="finding-list"></ul>
+      <div id="region-ranking" hidden aria-labelledby="region-ranking-title">
+        <h3 id="region-ranking-title">Regional latency ranking</h3>
+        <p id="region-summary" class="muted" aria-live="polite"></p>
+        <div class="table-wrap tbl"><table><thead><tr><th scope="col">Use as target</th><th scope="col">#</th><th scope="col">Region</th><th scope="col">Geography</th><th scope="col">Median</th><th scope="col">Rating</th></tr></thead><tbody id="region-rows"></tbody></table></div>
+        <button id="show-regions" class="cta ghost secondary" type="button" hidden>Show all regions</button>
+      </div>
+      <details class="more"><summary>What this did not test</summary><ul id="not-tested"></ul></details>
+    </div>
+  </section>
+
+  <section class="wz-stage hidden" id="stage-context" data-step="context" aria-labelledby="context-title">
+    <h2 id="context-title">Add context</h2>
+    <p class="purpose">Add how the session feels, capture a screenshot or short clip, or save private notes on your device.</p>
+    <fieldset class="sentiment-box">
+      <legend>How is your remote desktop experience right now? (optional)</legend>
+      <div class="days" id="sentiment-rating" role="radiogroup" aria-label="Experience rating">
+        <label><input type="radio" name="sentiment-rating" value="" checked> Skip</label>
+        <label><input type="radio" name="sentiment-rating" value="1"> 1 - Unusable</label>
+        <label><input type="radio" name="sentiment-rating" value="2"> 2 - Poor</label>
+        <label><input type="radio" name="sentiment-rating" value="3"> 3 - Okay</label>
+        <label><input type="radio" name="sentiment-rating" value="4"> 4 - Good</label>
+        <label><input type="radio" name="sentiment-rating" value="5"> 5 - Great</label>
+      </div>
+      <p class="muted gap">Symptoms noticed (saved as fixed IDs in the JSON result if you choose):</p>
+      <div class="days" id="symptom-chips" role="group" aria-label="Symptoms">
+        <label><input type="checkbox" name="symptom-id" value="slow-typing"> Slow typing</label>
+        <label><input type="checkbox" name="symptom-id" value="frozen-blurry-screen"> Frozen or blurry screen</label>
+        <label><input type="checkbox" name="symptom-id" value="teams-audio-video"> Teams audio or video</label>
+        <label><input type="checkbox" name="symptom-id" value="disconnects"> Disconnects</label>
+        <label><input type="checkbox" name="symptom-id" value="sign-in"> Sign-in</label>
+        <label><input type="checkbox" name="symptom-id" value="printing"> Printing</label>
+        <label><input type="checkbox" name="symptom-id" value="slow-apps"> Slow apps</label>
+      </div>
+    </fieldset>
+    <div class="capture-box gap" id="capture-box">
+      <h3>Capture a screenshot or short recording (stays on your device)</h3>
+      <p class="muted">Uses your browser's window picker and never enters the JSON result. Review the preview for names, emails or documents before saving.</p>
+      <div class="actions" id="capture-actions">
+        <button type="button" class="secondary" id="capture-photo">Capture window screenshot</button>
+        <button type="button" class="secondary" id="capture-video">Record short clip (up to 15s)</button>
+        <button type="button" class="secondary" id="capture-stop" hidden>Stop recording</button>
+        <a class="btnlink secondary" id="capture-guide-link" href="steps/index.html?step=windows.capture">Open OS screenshot guide</a>
+      </div>
+      <p id="capture-state" class="muted" role="status" aria-live="polite"></p>
+      <div id="capture-preview" class="capture-preview" hidden>
+        <img id="capture-img" alt="Captured screenshot preview" hidden>
+        <video id="capture-vid" controls hidden></video>
+        <div class="actions">
+          <a class="btnlink" id="capture-save" href="#" download="linecheck-capture.png">Save capture to device</a>
+          <button type="button" class="secondary" id="capture-discard">Discard</button>
+        </div>
+      </div>
+    </div>
+    <div class="comments-box gap">
+      <h3>Private comments (separate local file)</h3>
+      <p class="muted">Free-text comments are never placed in <code>avd-linecheck-result.json</code> or copied to the clipboard. Save them as a separate <code>comments.txt</code> file only if your helpdesk asked for it.</p>
+      <div class="row">
+        <label class="field" for="comment-time"><span>When did you notice the issue? (optional)</span><input type="text" id="comment-time" autocomplete="off" placeholder="For example: 09:15 local time"></label>
+      </div>
+      <label class="field gap" for="comment-text"><span class="private">what happened</span><textarea class="prose" id="comment-text" rows="3" autocomplete="off" placeholder="Describe what happened without pasting passwords, emails or company names."></textarea></label>
+      <div class="actions">
+        <button type="button" class="secondary" id="save-comments" disabled>Download comments.txt</button>
+        <span id="comment-state" class="muted" role="status"></span>
+      </div>
+    </div>
+    <details class="more"><summary>Need to collect client logs for your helpdesk?</summary>
+      <p>A browser page cannot read local log files on your device. Open the <a href="steps/index.html?step=avd.logs.windows">text-first guided steps</a> to find your client logs manually, or run the signed log bundle collector from <a href="https://github.com/avd-ops/avd-current-state">avd-current-state</a> if your administrator provided it.</p>
+    </details>
+  </section>
+
+  <section class="wz-stage hidden" id="stage-share" data-step="share" aria-labelledby="share-title">
+    <h2 id="share-title">Share or read a result</h2>
+    <p class="purpose">Copy a summary, download the JSON result or assessment intake file, or read a shared JSON file.</p>
+    <div class="slot">
+      <div class="stop" id="share-export-stop">
+        <h3>Share your result</h3>
+        <label class="switch full-regions"><input id="full-regions" type="checkbox"><span><strong>Include every measured region in the shared result</strong><br><span class="muted">By default, only the top three measured regions and your selected target region are included.</span></span></label>
+        <div class="actions share-actions">
+          <button class="cta" id="copy-summary" type="button" disabled>Copy summary</button>
+          <button class="cta ghost secondary" id="download-json" type="button" disabled>Download JSON</button>
+          <button class="secondary" id="download-intake" type="button" disabled>Download assessment intake</button>
+        </div>
+        <p id="share-state" class="muted" role="status" aria-live="polite">Nothing leaves this browser unless you copy or download it.</p>
+      </div>
+      <div class="stop paste" id="paste-stop" aria-labelledby="paste-title">
+        <h3 id="paste-title">Read a shared result</h3>
+        <label class="field" for="paste-input"><span>Paste a result JSON file's contents</span><textarea class="paste" id="paste-input" rows="5" autocomplete="off" spellcheck="false"></textarea></label>
+        <div class="actions">
+          <button class="cta ghost secondary" id="read-result" type="button">Read result</button>
+          <span class="quiet">Read in this browser. Nothing is uploaded.</span>
+        </div>
+        <div class="reply" id="paste-reply" hidden>
+          <p id="paste-state" class="bl run-state" role="status" aria-live="polite"></p>
+          <p id="paste-note" class="muted"></p>
+        </div>
+        <ul id="paste-findings" class="finding-list"></ul>
+      </div>
+    </div>
+  </section>
+
+  </div>
+</main>
+<nav class="wz-nav wide" aria-label="Step navigation"><div class="in">
+  <button type="button" class="secondary" id="back">&larr; Back</button>
+  <span class="where" id="where"></span>
+  <button type="button" id="next">Next &rarr;</button>
+</div></nav>
+<div class="after">
+  <footer class="disclaimer">Personal project, not for production. Provided "as is," without warranty of any kind, under the <a href="https://github.com/avd-ops/avd-linecheck/blob/main/LICENSE">MIT License</a>. Not affiliated with, endorsed by or supported by the author's employer, Liquidware or Microsoft. Contributions and forks are welcome: <a href="https://github.com/avd-ops/avd-linecheck">avd-linecheck on GitHub</a>.</footer>
+  <p class="credit">A <a href="https://prignano.ai/">prignano.ai</a> production</p>
+</div>
+<script src="assets/engine/core.js"></script>
+<script src="assets/engine/bands.js"></script>
+<script src="assets/engine/probe.js"></script>
+<script src="assets/engine/redact.js"></script>
+<script src="engine.js"></script>
+<script src="verdict.js"></script>
+<script src="export.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

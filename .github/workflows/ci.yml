@@ -1,6 +1,6 @@
 name: ci
 
-# Repo foundations: the notice, the license, links that resolve, no GUIDs or emails, no HCL.
+# Page contract, modules, packs, notices, links, and leak checks.
 on:
   pull_request:
   push:
@@ -19,5 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check shipped modules
+        run: find site scripts \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+      - name: Check generated CSP
+        run: node scripts/update-csp.mjs --check
       - name: node --test
         run: node --test "tests/*.test.mjs"
