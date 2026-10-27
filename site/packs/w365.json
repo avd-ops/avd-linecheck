@@ -1,0 +1,89 @@
+{
+  "id": "w365",
+  "version": "2026.10",
+  "title": "Windows 365 Cloud PC",
+  "cloud": "commercial",
+  "workload": "w365",
+  "endpointIds": [],
+  "hosts": [
+    {
+      "id": "w365.sign-in",
+      "host": "login.microsoftonline.com",
+      "purpose": "sign-in",
+      "required": true,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#client-list"
+    },
+    {
+      "id": "w365.connection-center",
+      "host": "windows.cloud.microsoft",
+      "purpose": "connection-center",
+      "required": true,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#client-list"
+    },
+    {
+      "id": "w365.portal",
+      "host": "windows365.microsoft.com",
+      "purpose": "cloud-pc-portal",
+      "required": true,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#client-list"
+    },
+    {
+      "id": "w365.intune",
+      "host": "intune.microsoft.com",
+      "purpose": "intune-cloud-pc",
+      "required": false,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#intune-endpoints"
+    },
+    {
+      "id": "w365.manage",
+      "host": "portal.manage.microsoft.com",
+      "purpose": "device-management",
+      "required": false,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#intune-endpoints"
+    },
+    {
+      "id": "w365.graph",
+      "host": "graph.microsoft.com",
+      "purpose": "service",
+      "required": false,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#client-list"
+    },
+    {
+      "id": "w365.ecs",
+      "host": "ecs.office.com",
+      "purpose": "connection-center",
+      "required": false,
+      "port": 443,
+      "claim": "ref:w365-network-requirements#client-list"
+    }
+  ],
+  "notTested": [
+    "client.wvd",
+    "client.relay"
+  ],
+  "regionalProbe": true,
+  "thresholds": [
+    { "below": 100, "state": "pass", "claim": "ref:avd-insights-use-cases#rtt-ideal-100-poor-200" },
+    { "below": 150, "state": "warn", "claim": "ref:avd-prerequisites#rtt-under-150" },
+    { "atMost": 200, "state": "warn", "claim": "ref:avd-connection-quality#rtt-bands" },
+    { "otherwise": "fail", "claim": "ref:avd-connection-quality#rtt-bands" }
+  ],
+  "download": {
+    "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin",
+    "bytes": 8388608,
+    "claim": "ref:rdp-bandwidth#monitor-real-users"
+  },
+  "primaryHostId": "w365.connection-center",
+  "stun": [],
+  "limits": "Reached means this browser completed DNS, a connection and TLS to the Windows 365 and Intune front doors. It does not test Cloud PC assignment, wildcard gateway endpoints, or UDP Shortpath.",
+  "links": {
+    "endpoints": "https://learn.microsoft.com/windows-365/enterprise/requirements-network",
+    "shortpath": "https://learn.microsoft.com/windows-365/enterprise/rdp-shortpath"
+  }
+}

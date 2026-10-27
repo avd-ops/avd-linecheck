@@ -174,17 +174,21 @@ test('download blob is exactly sized and named by its SHA-256', () => {
   const digest = createHash('sha256').update(bytes).digest('hex');
   assert.equal(bytes.length, 8388608);
   assert.equal(files[0], `8m-${digest}.bin`);
-  for (const packName of ['generic.json', 'avd.json']) {
+  for (const packName of ['generic.json', 'avd.json', 'avd-gov.json', 'w365.json', 'teams.json', 'm365.json']) {
     const pack = JSON.parse(readFileSync(join(site, 'packs', packName), 'utf8'));
     assert.equal(pack.download.path, `blobs/${files[0]}`);
     assert.equal(pack.download.bytes, bytes.length);
   }
 });
 
-test('pack schema defines the generic and AVD contracts', () => {
+test('pack schema defines the generic, AVD, US Gov, and workload pack contracts', () => {
   const schema = JSON.parse(readFileSync(join(site, 'packs', 'schema.json'), 'utf8'));
   const generic = JSON.parse(readFileSync(join(site, 'packs', 'generic.json'), 'utf8'));
   const avd = JSON.parse(readFileSync(join(site, 'packs', 'avd.json'), 'utf8'));
+  const avdGov = JSON.parse(readFileSync(join(site, 'packs', 'avd-gov.json'), 'utf8'));
+  const w365 = JSON.parse(readFileSync(join(site, 'packs', 'w365.json'), 'utf8'));
+  const teams = JSON.parse(readFileSync(join(site, 'packs', 'teams.json'), 'utf8'));
+  const m365 = JSON.parse(readFileSync(join(site, 'packs', 'm365.json'), 'utf8'));
   assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
   assert.equal(schema.$id, 'urn:avd-ops:avd-linecheck:pack:v1');
   assert.equal(schema.additionalProperties, false);
@@ -192,7 +196,7 @@ test('pack schema defines the generic and AVD contracts', () => {
   assert.equal(schema.allOf[0].then.properties.endpointIds.maxItems, 0);
   assert.equal(schema.allOf[0].then.properties.thresholds.maxItems, 0);
   assert.ok(schema.allOf[1].then.required.includes('endpointSource'));
-  for (const pack of [generic, avd]) {
+  for (const pack of [generic, avd, avdGov, w365, teams, m365]) {
     for (const field of schema.required) assert.ok(Object.hasOwn(pack, field), `${pack.id} has ${field}`);
     assert.equal(pack.download.bytes, 8388608);
   }
@@ -220,6 +224,7 @@ test('text-first guides cover all seven spec topics, detect platform ambiguity, 
     'avd.logs.web',
     'teams.logs.windows',
     'teams.logs.macos',
+    'teams.vdi-optimization',
     'avd.shortpath-test',
     'avd.mmr-logs',
     'avd.log-bundle-prep'

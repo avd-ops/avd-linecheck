@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const { measureSamples, measureParallelSamples, measureUntil, measureDownload, runProbePhases, probeOnce } = createRequire(import.meta.url)('../site/engine.js');
+const {
+  measureSamples, measureParallelSamples, measureUntil, measureDownload,
+  runProbePhases, probeOnce, sameOriginDnsHint, detectWebClientCapabilities
+} = createRequire(import.meta.url)('../site/engine.js');
 
 test('sample runner times successful probes and counts stalls without calling them passes', async () => {
   let clock = 0;
@@ -191,4 +194,81 @@ test('phased run completes with a verdict when all hosts time out inside the dea
   assert.equal(res.regionResults.length, 2);
   assert.ok(res.regionResults.every((r) => r.result.status !== 'reached'));
   assert.ok(phasesSeen.includes('Reachability'));
+});
+
+test('measureSamples and runProbePhases calculate warmUpMs and setupMs overhead', async () => {
+  let clock = 0;
+  let calls = 0;
+  const durations = [320, 20, 22, 18];
+  const sampleRes = await measureSamples({
+    probe: async () => {
+      const d = durations[calls++];
+      clock += d;
+      return d;
+    },
+    now: () => clock,
+    samples: 3
+  });
+  assert.equal(sampleRes.warmUpMs, 320);
+  assert.equal(sampleRes.median, 20);
+  assert.equal(sampleRes.setupMs, 300);
+
+  let fetchCalls = 0;
+  const fetchDurations = [290, 30, 32, 28, 30];
+  let fetchClock = 0;
+  const phased = await runProbePhases({
+    targets: [
+      { id: 'client.sign-in', host: 'login.microsoftonline.com', purpose: 'Microsoft Entra sign-in', required: true }
+    ],
+    regions: [],
+    regionMap: { hostTemplate: '{region}.api.cognitive.microsoft.com', measurement: { method: 'GET', samples: 1, timeoutMs: 100, concurrency: 1 } },
+    now: () => fetchClock,
+    probeImpl: async () => {
+      const d = fetchDurations[Math.min(fetchCalls++, fetchDurations.length - 1)];
+      fetchClock += d;
+      return {};
+    }
+  });
+  assert.equal(phased.hostResults.length, 1);
+  assert.equal(phased.hostResults[0].result.status, 'reached');
+  assert.equal(phased.hostResults[0].result.warmUpMs, 290);
+  assert.equal(phased.hostResults[0].result.median, 30);
+  assert.equal(phased.hostResults[0].result.setupMs, 260);
+});
+
+test('sameOriginDnsHint extracts domainLookupEnd - domainLookupStart when positive', () => {
+  assert.equal(sameOriginDnsHint([]), null);
+  assert.equal(sameOriginDnsHint([{ domainLookupStart: 10, domainLookupEnd: 10 }]), null);
+  assert.equal(sameOriginDnsHint([{ domainLookupStart: 5, domainLookupEnd: 29.4 }]), 24);
+  assert.equal(sameOriginDnsHint([{ domainLookupStart: 10, domainLookupEnd: 185 }]), 175);
+});
+
+test('detectWebClientCapabilities checks WebCodecs, Clipboard, and Multi-screen APIs without prompting', async () => {
+  const full = await detectWebClientCapabilities({
+    VideoDecoder: {
+      isConfigSupported: async (cfg) => ({ supported: cfg.codec.startsWith('avc1') || cfg.codec.startsWith('av01') })
+    },
+    navigator: { clipboard: { readText: async () => '', writeText: async () => {} } },
+    getScreenDetails: async () => ({})
+  });
+  assert.deepEqual(full, {
+    webCodecs: true,
+    h264: true,
+    av1: true,
+    clipboard: true,
+    multiScreen: true
+  });
+
+  const minimal = await detectWebClientCapabilities({
+    VideoDecoder: null,
+    navigator: {},
+    getScreenDetails: null
+  });
+  assert.deepEqual(minimal, {
+    webCodecs: false,
+    h264: false,
+    av1: false,
+    clipboard: false,
+    multiScreen: false
+  });
 });

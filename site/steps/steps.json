@@ -274,6 +274,27 @@
       "reviewed": true,
       "reviewer": "avd-ops maintainer",
       "assets": []
+    },
+    {
+      "id": "teams.vdi-optimization",
+      "platform": "Windows",
+      "client": "windows-app",
+      "where": "session",
+      "title": "Verify Teams VDI media optimization (SlimCore or WebRTC)",
+      "actions": [
+        "Open Microsoft Teams inside your remote session and select Settings and more (...) next to your profile picture.",
+        "Select Settings, then select About Teams and read the Version and VDI optimization status lines."
+      ],
+      "whatYouShouldSee": "A status line showing SlimCore media optimized or AVD media optimized instead of not optimized.",
+      "done": "Share the status line with your helpdesk if calls or meetings lag.",
+      "source": {
+        "title": "New Microsoft Teams for Virtualized Desktop Infrastructure (VDI)",
+        "url": "https://learn.microsoft.com/en-us/microsoftteams/new-teams-vdi-requirements-deploy",
+        "checkedAt": "2026-10-25"
+      },
+      "reviewed": true,
+      "reviewer": "avd-ops maintainer",
+      "assets": []
     }
   ]
 }

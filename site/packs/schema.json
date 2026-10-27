@@ -8,6 +8,8 @@
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "version": { "type": "string", "minLength": 1 },
     "title": { "type": "string", "minLength": 1 },
+    "cloud": { "type": "string", "enum": ["commercial", "gov"] },
+    "workload": { "type": "string", "enum": ["generic", "avd", "w365", "teams", "m365"] },
     "endpointSource": {
       "type": "object",
       "required": ["repo", "path", "commit", "sha256"],
@@ -26,7 +28,7 @@
         "type": "object",
         "required": ["id", "host", "purpose", "required", "port"],
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
           "host": { "type": "string", "pattern": "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,}$" },
           "purpose": { "type": "string", "minLength": 1 },
           "required": { "type": "boolean" },
@@ -36,6 +38,7 @@
         "additionalProperties": false
       }
     },
+    "notTested": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "regionalProbe": { "type": "boolean" },
     "thresholds": {
       "type": "array",
@@ -71,10 +74,23 @@
     },
     "primaryHostId": { "type": "string" },
     "stun": { "type": "array", "maxItems": 0 },
+    "shortpathNote": {
+      "type": "object",
+      "required": ["claim", "sentence"],
+      "properties": {
+        "claim": { "$ref": "#/$defs/claim" },
+        "sentence": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "limits": { "type": "string", "minLength": 1 },
     "links": {
       "type": "object",
-      "properties": { "endpoints": { "format": "uri" }, "shortpath": { "format": "uri" } },
+      "properties": {
+        "endpoints": { "format": "uri" },
+        "shortpath": { "format": "uri" },
+        "vdiCheck": { "type": "string", "minLength": 1 }
+      },
       "additionalProperties": false
     }
   },

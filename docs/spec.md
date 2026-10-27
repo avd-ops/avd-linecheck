@@ -128,7 +128,9 @@ Hostnames below are Microsoft's published endpoints, the same for everyone, and 
 
 `*.wvd.microsoft.com` (feed, broker, gateway) is the wildcard that matters and has no concrete name at the pin. The older names `rdweb`, `rdbroker` and `rdgateway.wvd.microsoft.com` still answer (avd-current-state probes them), but Learn no longer lists them. Open question Q5: probe them as "informational, not in Learn's current list", or leave them out. The spec proposes to leave them out until spike S2 shows what they return.
 
-**Clouds.** The AVD pack is the Azure public cloud. Azure for US Government has its own end-user list (`login.microsoftonline.us`, `*.wvd.azure.us`) and STUN without TURN (`ref:configure-rdp-shortpath#turn-public-cloud-only`); a pack per cloud is the extension point, not a switch inside one pack.
+**Clouds.** The AVD pack (`avd.json`) is the Azure public cloud. Azure for US Government ships as its own pack (`avd-gov.json`) with its end-user list (`login.microsoftonline.us`, `graph.microsoft.us`, `*.wvd.azure.us` in `notTested`), US Government regional endpoints (`usgovvirginia`, `usgovarizona`, `usgovtexas` via `{region}.api.cognitive.microsoft.us` in `regions.json`), and STUN without TURN (`ref:configure-rdp-shortpath#turn-public-cloud-only`). Step 1 and the URL parameter `?cloud=commercial|gov` switch between the Commercial (`avd`) and Azure US Government (`avd-gov`) AVD packs and their respective region maps.
+
+**Workload packs.** Beyond AVD (`avd.json`, `avd-gov.json`) and `generic.json`, the page ships workload packs for **Windows 365** (`w365.json`: `windows.cloud.microsoft`, `windows365.microsoft.com`, `intune.microsoft.com`, `portal.manage.microsoft.com`, `graph.microsoft.com`, `ecs.office.com`, `login.microsoftonline.com`), **Microsoft Teams VDI** (`teams.json`: `teams.cloud.microsoft`, `teams.microsoft.com`, `config.teams.microsoft.com`, `presence.teams.microsoft.com`, with `teams.media-udp` in `notTested` and links to `steps/index.html?step=teams.logs.windows` and `steps/index.html?step=teams.vdi-optimization`), and **Microsoft 365 Core** (`m365.json`: `outlook.cloud.microsoft`, `outlook.office.com`, `officeclient.microsoft.com`, `graph.microsoft.com`). Users or helpdesk links (`?pack=<id>` or `?workloads=avd,w365,teams,m365`) can run a single pack or combine multiple workloads into a deduplicated reachability target list.
 
 ### 6.2 Round-trip thresholds
 
@@ -172,7 +174,13 @@ avd-assess proposes one intake entry per user network (`gaps/client-network.md`,
 
 ### 6.6 Proxies and tunnels
 
-The page cannot see a proxy. It can notice two things and say them as caveats, never as findings: every probed host answering with nearly the same time (one hop answers for all), and a region ranking whose nearest region sits in another geography than the browser's language and time zone suggest (coarse, never stored). Both produce the sentence "a proxy, VPN or security agent may be carrying this traffic; the result is about that path", with the Microsoft guidance cited (`ref:avd-proxy#bypass-proxies`, `ref:rdp-traffic-optimization#bypass-tunnels`).
+The page cannot see a proxy. It can notice three things and say them as caveats, never as findings: every probed host answering with nearly the same time (one hop answers for all), a region ranking whose nearest region sits in another geography than the browser's language and time zone suggest (coarse, never stored), and a cold connection setup overhead (`setupMs = warmUpMs - medianMs`) of 250 ms or more on any probed host (pointing to a slow DNS resolver or a TLS-inspecting proxy on the first request, `ref:avd-proxy#bypass-proxies`, `ref:rdp-traffic-optimization#no-tls-inspection`). These produce caveats citing the Microsoft guidance (`ref:avd-proxy#bypass-proxies`, `ref:rdp-traffic-optimization#bypass-tunnels`, `ref:rdp-traffic-optimization#no-tls-inspection`). Same-origin DNS lookup time (`domainLookupEnd - domainLookupStart` on the navigation entry) is also reported as an informational hint (`dns.origin`) when positive.
+
+### 6.7 Helpdesk link builder, before/after comparison, and web client readiness
+
+- **Helpdesk link builder.** Step 1 (`Run check`) and Step 4 (`Share or read`) provide a link builder that generates a shareable URL with `?cloud=commercial|gov`, `?pack=<id>`, `?workloads=<csv>`, `?region=<id>`, and `?lite`.
+- **Before / after run comparison.** Users can save the current result as a baseline in memory (or paste a baseline JSON in Step 4) and run a second check (for example, after disconnecting VPN or switching from Wi-Fi to wired Ethernet) to see the delta in target-region RTT, jitter, cleared/newly blocked required checks, and cleared/added proxy caveats.
+- **Web client readiness check.** For users connecting in a browser at `windows.cloud.microsoft`, the page runs an informational, non-prompting capability check (`VideoDecoder.isConfigSupported` for H.264 and AV1 hardware/software decode, `navigator.clipboard` availability, and `window.getScreenDetails` multi-monitor API support) and includes the enumerated status values in the export (`webClient`).
 
 ## 7. Packs: the generic engine
 
@@ -228,7 +236,7 @@ It never holds: an IP address (the WebRTC reflexive address is compared and drop
 
 ### 8.4 Abuse and safety
 
-- The probe targets are fixed by the pack on the page's origin; the link cannot add hosts. The only parameters are `?region=`, validated against the pack's region list, and `?lite`, a flag; anything else is ignored. The page is not a scanner.
+- The probe targets are fixed by the pack on the page's origin; the link cannot add hosts. The only parameters are `?cloud=` (`commercial` or `gov`), `?pack=` (validated against shipped packs), `?workloads=` (validated against shipped workload packs), `?region=` (validated against the active cloud's region list), and `?lite`, a flag; anything else is ignored. The page is not a scanner.
 - Sample counts and concurrency are constants; a run makes about 200 small requests (section 5) and one blob download, with deadlines. There is no loop mode and no scheduler.
 - No request carries credentials, so the page cannot be used to test whether the user is signed in anywhere.
 - The paste-a-result view parses JSON with a schema check and renders only enumerated values from the paste: check ids, states, numbers and units. Every sentence is looked up from the shipped pack by check id, state and pack version, so a crafted export cannot put its own words in front of a helpdesk agent; a paste whose pack version the page does not ship renders numbers and states with "sentences unavailable for this version".

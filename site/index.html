@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Network check | avd-linecheck</title>
 <meta name="description" content="A browser-based network check for virtual desktop users. Everything stays in your browser.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self' https://aka.ms https://australiaeast.api.cognitive.microsoft.com https://brazilsouth.api.cognitive.microsoft.com https://canadacentral.api.cognitive.microsoft.com https://canadaeast.api.cognitive.microsoft.com https://centralindia.api.cognitive.microsoft.com https://centralus.api.cognitive.microsoft.com https://eastasia.api.cognitive.microsoft.com https://eastus.api.cognitive.microsoft.com https://eastus2.api.cognitive.microsoft.com https://ecs.office.com https://francecentral.api.cognitive.microsoft.com https://germanywestcentral.api.cognitive.microsoft.com https://go.microsoft.com https://graph.microsoft.com https://indonesiacentral.api.cognitive.microsoft.com https://italynorth.api.cognitive.microsoft.com https://japaneast.api.cognitive.microsoft.com https://japanwest.api.cognitive.microsoft.com https://koreacentral.api.cognitive.microsoft.com https://learn.microsoft.com https://login.microsoftonline.com https://malaysiawest.api.cognitive.microsoft.com https://newzealandnorth.api.cognitive.microsoft.com https://northcentralus.api.cognitive.microsoft.com https://northeurope.api.cognitive.microsoft.com https://norwayeast.api.cognitive.microsoft.com https://polandcentral.api.cognitive.microsoft.com https://privacy.microsoft.com https://qatarcentral.api.cognitive.microsoft.com https://southafricanorth.api.cognitive.microsoft.com https://southcentralus.api.cognitive.microsoft.com https://southeastasia.api.cognitive.microsoft.com https://southindia.api.cognitive.microsoft.com https://spaincentral.api.cognitive.microsoft.com https://swedencentral.api.cognitive.microsoft.com https://switzerlandnorth.api.cognitive.microsoft.com https://uaenorth.api.cognitive.microsoft.com https://uksouth.api.cognitive.microsoft.com https://ukwest.api.cognitive.microsoft.com https://westcentralus.api.cognitive.microsoft.com https://westeurope.api.cognitive.microsoft.com https://westus.api.cognitive.microsoft.com https://westus2.api.cognitive.microsoft.com https://westus3.api.cognitive.microsoft.com https://windows.cloud.microsoft https://windows365.microsoft.com; base-uri 'none'; form-action 'none'; object-src 'none'; manifest-src 'self'; webrtc 'block'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self' https://aka.ms https://australiaeast.api.cognitive.microsoft.com https://brazilsouth.api.cognitive.microsoft.com https://canadacentral.api.cognitive.microsoft.com https://canadaeast.api.cognitive.microsoft.com https://centralindia.api.cognitive.microsoft.com https://centralus.api.cognitive.microsoft.com https://config.teams.microsoft.com https://eastasia.api.cognitive.microsoft.com https://eastus.api.cognitive.microsoft.com https://eastus2.api.cognitive.microsoft.com https://ecs.office.com https://francecentral.api.cognitive.microsoft.com https://germanywestcentral.api.cognitive.microsoft.com https://go.microsoft.com https://graph.microsoft.com https://graph.microsoft.us https://indonesiacentral.api.cognitive.microsoft.com https://intune.microsoft.com https://italynorth.api.cognitive.microsoft.com https://japaneast.api.cognitive.microsoft.com https://japanwest.api.cognitive.microsoft.com https://koreacentral.api.cognitive.microsoft.com https://learn.microsoft.com https://login.microsoftonline.com https://login.microsoftonline.us https://malaysiawest.api.cognitive.microsoft.com https://newzealandnorth.api.cognitive.microsoft.com https://northcentralus.api.cognitive.microsoft.com https://northeurope.api.cognitive.microsoft.com https://norwayeast.api.cognitive.microsoft.com https://officeclient.microsoft.com https://outlook.cloud.microsoft https://outlook.office.com https://polandcentral.api.cognitive.microsoft.com https://portal.manage.microsoft.com https://presence.teams.microsoft.com https://privacy.microsoft.com https://qatarcentral.api.cognitive.microsoft.com https://southafricanorth.api.cognitive.microsoft.com https://southcentralus.api.cognitive.microsoft.com https://southeastasia.api.cognitive.microsoft.com https://southindia.api.cognitive.microsoft.com https://spaincentral.api.cognitive.microsoft.com https://swedencentral.api.cognitive.microsoft.com https://switzerlandnorth.api.cognitive.microsoft.com https://teams.cloud.microsoft https://teams.microsoft.com https://uaenorth.api.cognitive.microsoft.com https://uksouth.api.cognitive.microsoft.com https://ukwest.api.cognitive.microsoft.com https://usgovarizona.api.cognitive.microsoft.us https://usgovtexas.api.cognitive.microsoft.us https://usgovvirginia.api.cognitive.microsoft.us https://westcentralus.api.cognitive.microsoft.com https://westeurope.api.cognitive.microsoft.com https://westus.api.cognitive.microsoft.com https://westus2.api.cognitive.microsoft.com https://westus3.api.cognitive.microsoft.com https://windows.cloud.microsoft https://windows365.microsoft.com; base-uri 'none'; form-action 'none'; object-src 'none'; manifest-src 'self'; webrtc 'block'">
 <link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/avd-ops.css">
 <link rel="stylesheet" href="assets/avd-ops-portal.css">
@@ -30,7 +30,7 @@
   <div class="panel-head"><h2 id="settings-title">Check settings</h2><button type="button" class="linkbtn" id="settings-close">Close</button></div>
   <p class="muted">Saved only in this browser when you choose a default pack.</p>
   <label class="field gap" for="default-pack"><span>Default check pack</span>
-    <select id="default-pack"><option value="">Ask each time (Generic default)</option><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option></select>
+    <select id="default-pack"><option value="">Ask each time (Generic default)</option><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option><option value="avd-gov">Azure Virtual Desktop (US Government)</option><option value="w365">Windows 365 Cloud PC</option><option value="teams">Microsoft Teams (VDI SlimCore / WebRTC)</option><option value="m365">Microsoft 365 Core</option></select>
   </label>
   <label class="switch gap"><input type="checkbox" id="lite-mode"><span><strong>Lite mode (skip the 8 MiB download check)</strong><br><span class="muted">Use on metered or cellular links. You can also add <code>?lite</code> to the page URL.</span></span></label>
   <div class="actions">
@@ -79,23 +79,36 @@
     <div class="setup">
       <div class="row">
         <div class="field">
+          <label for="cloud-select"><span>Cloud environment</span></label>
+          <select id="cloud-select"><option value="commercial">Azure Commercial</option><option value="gov">Azure US Government</option></select>
+        </div>
+        <div class="field">
           <label for="pack-select"><span>Check pack</span></label>
-          <select id="pack-select"><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option></select>
+          <select id="pack-select"><option value="generic">Generic network check</option><option value="avd">Azure Virtual Desktop</option><option value="avd-gov">Azure Virtual Desktop (US Government)</option><option value="w365">Windows 365 Cloud PC</option><option value="teams">Microsoft Teams (VDI SlimCore / WebRTC)</option><option value="m365">Microsoft 365 Core</option></select>
         </div>
         <div class="field" id="region-field">
           <label id="region-label" for="region-select"><span>Region to compare </span><span class="muted">optional</span></label>
           <select id="region-select"><option value="">No region selected</option></select>
         </div>
       </div>
+      <fieldset class="geo-filter gap" id="workload-control">
+        <legend>Workloads to include (optional)</legend>
+        <label><input type="checkbox" name="workload-id" value="avd"> Azure Virtual Desktop</label>
+        <label><input type="checkbox" name="workload-id" value="w365"> Windows 365</label>
+        <label><input type="checkbox" name="workload-id" value="teams"> Microsoft Teams (VDI)</label>
+        <label><input type="checkbox" name="workload-id" value="m365"> Microsoft 365 Core</label>
+      </fieldset>
+      <p id="gov-shortpath-banner" class="relay-note" role="note" hidden>RDP Shortpath with TURN relay is supported only in Azure Commercial (<code>ref:configure-rdp-shortpath#turn-public-cloud-only</code>). Azure US Government uses direct STUN Shortpath or falls back to the TCP gateway.</p>
       <p id="pack-warning" class="pack-warning" role="note" hidden>This fork checks custom hosts. A shared result may name your organization; review it before sharing publicly.</p>
       <div id="region-control" class="gap">
         <p id="region-help" class="muted">All geographies start selected. A selected target region is included even if its geography is unchecked.</p>
-        <fieldset class="geo-filter">
+        <fieldset class="geo-filter" id="geo-fieldset">
           <legend>Regions to test</legend>
-          <label><input type="checkbox" name="region-geo" value="Americas" checked> Americas</label>
-          <label><input type="checkbox" name="region-geo" value="Europe" checked> Europe</label>
-          <label><input type="checkbox" name="region-geo" value="Asia Pacific" checked> Asia Pacific</label>
-          <label><input type="checkbox" name="region-geo" value="Middle East & Africa" checked> Middle East &amp; Africa</label>
+          <label data-cloud="commercial"><input type="checkbox" name="region-geo" value="Americas" checked> Americas</label>
+          <label data-cloud="commercial"><input type="checkbox" name="region-geo" value="Europe" checked> Europe</label>
+          <label data-cloud="commercial"><input type="checkbox" name="region-geo" value="Asia Pacific" checked> Asia Pacific</label>
+          <label data-cloud="commercial"><input type="checkbox" name="region-geo" value="Middle East & Africa" checked> Middle East &amp; Africa</label>
+          <label data-cloud="gov" hidden><input type="checkbox" name="region-geo" value="US Government" checked> US Government</label>
         </fieldset>
       </div>
       <noscript><p>This network check needs JavaScript. The <a href="steps/index.html">text-first guided steps</a> are still available.</p></noscript>
@@ -113,7 +126,18 @@
     </details>
     <details class="more limits"><summary>What a browser can and cannot tell you</summary>
       <p>This check measures HTTPS requests from this browser. It does not test sign-in, your access to a desktop, wildcard endpoints, UDP or the session host. A proxy or content blocker may affect the result. Regional timings are to a service endpoint, not to your desktop host.</p>
-      <p id="avd-links" hidden><a href="https://learn.microsoft.com/azure/virtual-desktop/required-fqdn-endpoint">AVD endpoint requirements</a> &middot; <a href="https://learn.microsoft.com/azure/virtual-desktop/configure-rdp-shortpath">RDP Shortpath guidance</a></p>
+      <p id="avd-links" hidden><a id="avd-endpoints-link" href="https://learn.microsoft.com/azure/virtual-desktop/required-fqdn-endpoint">AVD endpoint requirements</a> &middot; <a id="avd-shortpath-link" href="https://learn.microsoft.com/azure/virtual-desktop/configure-rdp-shortpath">RDP Shortpath guidance</a></p>
+      <p id="teams-links" hidden><a href="steps/index.html?step=teams.logs.windows">Collect Teams support logs</a> &middot; <a href="steps/index.html?step=teams.vdi-optimization">Verify Teams VDI media optimization</a></p>
+    </details>
+    <details class="more" id="helpdesk-builder-step1"><summary>Helpdesk pre-filled link builder</summary>
+      <p class="muted">Copy a ready-to-share URL pre-configured with your chosen cloud, workloads or pack, target region, and optional Lite mode.</p>
+      <div class="row gap">
+        <label class="field" for="helpdesk-url-step1"><span>Ready-to-share link</span><input type="text" id="helpdesk-url-step1" readonly autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="copy-helpdesk-step1">Copy helpdesk link</button>
+        <span id="helpdesk-state-step1" class="muted" role="status" aria-live="polite"></span>
+      </div>
     </details>
   </section>
 
@@ -127,8 +151,19 @@
         <p id="overall-note" class="muted"></p>
         <ul id="caveat-list" class="caveat-list" hidden></ul>
         <p id="relay-note" class="relay-note" hidden></p>
+        <p id="gov-shortpath-note" class="relay-note" hidden></p>
+        <p id="teams-vdi-note" class="relay-note" hidden>UDP 3478-3481 media relays for Teams VDI SlimCore and WebRTC cannot be tested from a static web page. <a href="steps/index.html?step=teams.vdi-optimization">Check Teams VDI optimization</a> &middot; <a href="steps/index.html?step=teams.logs.windows">Collect Teams support logs</a></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="keep-baseline">Keep as baseline for comparison</button>
+        <span id="baseline-state" class="muted" role="status" aria-live="polite"></span>
       </div>
       <ul id="finding-list" class="finding-list"></ul>
+      <div id="webclient-readiness" class="capture-box gap" hidden aria-labelledby="webclient-title">
+        <h3 id="webclient-title">Web client readiness (windows.cloud.microsoft)</h3>
+        <p class="muted">Informational browser capability check for connecting through a web browser. Does not change the network verdict.</p>
+        <ul id="webclient-list"></ul>
+      </div>
       <div id="region-ranking" hidden aria-labelledby="region-ranking-title">
         <h3 id="region-ranking-title">Regional latency ranking</h3>
         <p id="region-summary" class="muted" aria-live="polite"></p>
@@ -225,6 +260,34 @@
           <p id="paste-note" class="muted"></p>
         </div>
         <ul id="paste-findings" class="finding-list"></ul>
+      </div>
+      <div class="stop" id="compare-stop" aria-labelledby="compare-title">
+        <h3 id="compare-title">Compare before and after runs</h3>
+        <p class="muted">Keep a baseline run in step 2 (for example on VPN or Wi-Fi) or paste a second result JSON below to compare RTT, jitter, blocked hosts, and proxy caveats.</p>
+        <label class="field gap" for="compare-input"><span>Paste a baseline or second result JSON (optional if you kept a baseline run)</span><textarea class="paste" id="compare-input" rows="4" autocomplete="off" spellcheck="false"></textarea></label>
+        <div class="actions">
+          <button class="cta ghost secondary" id="run-compare" type="button">Compare runs</button>
+          <button class="secondary" id="clear-baseline" type="button" hidden>Clear kept baseline</button>
+        </div>
+        <div class="reply" id="compare-reply" hidden>
+          <p id="compare-state" class="bl run-state" role="status" aria-live="polite"></p>
+          <ul id="compare-list" class="finding-list"></ul>
+        </div>
+      </div>
+      <div class="stop" id="helpdesk-stop" aria-labelledby="helpdesk-title">
+        <h3 id="helpdesk-title">Helpdesk link builder</h3>
+        <p class="muted">Build a link for users with pre-selected cloud, pack or workloads, target region, and Lite mode.</p>
+        <div class="row gap">
+          <label class="field" for="hd-cloud"><span>Cloud</span><select id="hd-cloud"><option value="commercial">Azure Commercial</option><option value="gov">Azure US Government</option></select></label>
+          <label class="field" for="hd-pack"><span>Pack</span><select id="hd-pack"><option value="avd">Azure Virtual Desktop</option><option value="avd-gov">Azure Virtual Desktop (US Gov)</option><option value="w365">Windows 365 Cloud PC</option><option value="teams">Microsoft Teams (VDI)</option><option value="m365">Microsoft 365 Core</option><option value="generic">Generic network check</option></select></label>
+          <label class="field" for="hd-region"><span>Target region</span><select id="hd-region"><option value="">No region selected</option></select></label>
+        </div>
+        <label class="switch gap"><input type="checkbox" id="hd-lite" checked><span><strong>Lite mode (<code>?lite=1</code>, skips 8 MiB download)</strong></span></label>
+        <label class="field gap" for="helpdesk-url-step4"><span>Shareable helpdesk link</span><input type="text" id="helpdesk-url-step4" readonly autocomplete="off" spellcheck="false"></label>
+        <div class="actions">
+          <button type="button" class="secondary" id="copy-helpdesk-step4">Copy helpdesk link</button>
+          <span id="helpdesk-state-step4" class="muted" role="status" aria-live="polite"></span>
+        </div>
       </div>
     </div>
   </section>
