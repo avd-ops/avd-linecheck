@@ -1,0 +1,56 @@
+{
+  "id": "m365",
+  "version": "2026.10",
+  "title": "Microsoft 365 Core",
+  "cloud": "commercial",
+  "workload": "m365",
+  "endpointIds": [],
+  "hosts": [
+    {
+      "id": "m365.outlook-cloud",
+      "host": "outlook.cloud.microsoft",
+      "purpose": "exchange-online",
+      "required": true,
+      "port": 443,
+      "claim": "ref:m365-endpoints#exchange-online"
+    },
+    {
+      "id": "m365.outlook-office",
+      "host": "outlook.office.com",
+      "purpose": "exchange-front-door",
+      "required": true,
+      "port": 443,
+      "claim": "ref:m365-endpoints#exchange-online"
+    },
+    {
+      "id": "m365.officeclient",
+      "host": "officeclient.microsoft.com",
+      "purpose": "m365-apps-activation",
+      "required": false,
+      "port": 443,
+      "claim": "ref:m365-endpoints#m365-common"
+    },
+    {
+      "id": "m365.graph",
+      "host": "graph.microsoft.com",
+      "purpose": "microsoft-graph",
+      "required": false,
+      "port": 443,
+      "claim": "ref:m365-endpoints#m365-common"
+    }
+  ],
+  "notTested": [],
+  "regionalProbe": false,
+  "thresholds": [],
+  "download": {
+    "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin",
+    "bytes": 8388608,
+    "claim": "ref:rdp-bandwidth#monitor-real-users"
+  },
+  "primaryHostId": "m365.outlook-cloud",
+  "stun": [],
+  "limits": "Checks HTTPS reachability to Microsoft 365 Exchange Online, Microsoft Graph, and Microsoft 365 Apps client endpoints from this browser.",
+  "links": {
+    "endpoints": "https://learn.microsoft.com/microsoft-365/enterprise/urls-and-ip-address-ranges"
+  }
+}

@@ -8,11 +8,18 @@ const { connectOrigins } = createRequire(import.meta.url)('../site/engine.js');
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const htmlPath = join(root, 'site', 'index.html');
 const readJson = (path) => JSON.parse(readFileSync(join(root, 'site', 'packs', path), 'utf8'));
-const [generic, avd, endpointMap, regionMap] = [
-  readJson('generic.json'), readJson('avd.json'), readJson('endpoints.json'), readJson('regions.json')
+const [generic, avd, avdGov, w365, teams, m365, endpointMap, regionMap] = [
+  readJson('generic.json'),
+  readJson('avd.json'),
+  readJson('avd-gov.json'),
+  readJson('w365.json'),
+  readJson('teams.json'),
+  readJson('m365.json'),
+  readJson('endpoints.json'),
+  readJson('regions.json')
 ];
 const html = readFileSync(htmlPath, 'utf8');
-const origins = connectOrigins([generic, avd], endpointMap, regionMap);
+const origins = connectOrigins([generic, avd, avdGov, w365, teams, m365], endpointMap, regionMap);
 const policy = html.match(/connect-src 'self'[^;"]*/);
 if (!policy) throw new Error('Could not find connect-src in site/index.html');
 const expected = `connect-src 'self' ${origins.join(' ')}`;

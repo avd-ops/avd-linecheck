@@ -2,6 +2,8 @@
   "id": "avd",
   "version": "2026.10",
   "title": "Azure Virtual Desktop",
+  "cloud": "commercial",
+  "workload": "avd",
   "endpointSource": {
     "repo": "avd-ops/avd-assess",
     "path": "endpoints.json",

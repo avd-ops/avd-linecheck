@@ -22,7 +22,7 @@
   const RESERVED_IDS = new Set([
     'site.origin', 'target-region', 'jitter.primary', 'slow-samples', 'stalls.primary',
     'download', 'loaded-latency', 'upload', 'udp', 'session-transport', 'session-host',
-    'wildcard-endpoints', 'dns', 'packet-loss', 'vantage'
+    'wildcard-endpoints', 'dns', 'dns.origin', 'setup.max', 'packet-loss', 'vantage'
   ]);
   const MAX_SUFFICIENCY_MBPS = 67;
 
@@ -67,7 +67,7 @@
     const hostIds = new Set();
     for (const host of pack.hosts) {
       if (
-        !host || !/^[a-z][a-z0-9-]*$/.test(host.id) || RESERVED_IDS.has(host.id) || seen.has(host.id) || hostIds.has(host.id) ||
+        !host || !/^[a-z][a-z0-9.-]*$/.test(host.id) || RESERVED_IDS.has(host.id) || seen.has(host.id) || hostIds.has(host.id) ||
         !isPublicHost(host.host) || host.port !== 443 || typeof host.required !== 'boolean' ||
         typeof host.purpose !== 'string' || !host.purpose ||
         (host.claim !== null && host.claim !== undefined && !/^ref:[a-z0-9-]+#[a-z0-9-]+$/.test(host.claim))
@@ -99,21 +99,35 @@
   }
 
   function regionalHost(regionMap, region) {
-    if (!regionMap || regionMap.hostTemplate !== '{region}.api.cognitive.microsoft.com' || !region || !/^[a-z0-9]+$/.test(region.id)) {
+    if (!regionMap || !region || !/^[a-z0-9]+$/.test(region.id)) {
       throw new TypeError('Regional host is not in the pinned public map');
     }
-    return regionMap.hostTemplate.replace('{region}', region.id);
+    const isGov = region.cloud === 'gov' || /^usgov/.test(region.id);
+    const tpl = isGov ? regionMap.govHostTemplate : regionMap.hostTemplate;
+    const expectedTpl = isGov ? '{region}.api.cognitive.microsoft.us' : '{region}.api.cognitive.microsoft.com';
+    if (tpl !== expectedTpl) {
+      throw new TypeError('Regional host is not in the pinned public map');
+    }
+    return tpl.replace('{region}', region.id);
+  }
+
+  function regionsForCloud(regionMap, cloud = 'commercial') {
+    if (!regionMap) return [];
+    if (cloud === 'gov') return Array.isArray(regionMap.govRegions) ? regionMap.govRegions : [];
+    return Array.isArray(regionMap.regions) ? regionMap.regions : [];
   }
 
   function connectOrigins(packs, endpointMap, regionMap) {
     const endpoints = endpointById(endpointMap);
     const hosts = [];
     for (const pack of packs) {
-      validatePack(pack, endpointMap, regionMap.regions);
+      const cloudRegions = pack.cloud === 'gov' && regionMap.govRegions ? regionMap.govRegions : regionMap.regions;
+      validatePack(pack, endpointMap, cloudRegions);
       for (const id of pack.endpointIds) hosts.push(endpoints.get(id).host);
       for (const host of pack.hosts) hosts.push(host.host);
       if (pack.regionalProbe) {
         for (const region of regionMap.regions) hosts.push(regionalHost(regionMap, region));
+        for (const region of regionMap.govRegions || []) hosts.push(regionalHost(regionMap, region));
       }
     }
     const origins = probe && typeof probe.connectSrc === 'function'
@@ -136,6 +150,101 @@
       };
     });
     return [...mapped, ...pack.hosts.map((host) => ({ id: host.id, ...host }))];
+  }
+
+  function combineWorkloadTargets(packs, endpointMap) {
+    const list = Array.isArray(packs) ? packs : [];
+    const byHost = new Map();
+    for (const pack of list) {
+      for (const target of probeTargets(pack, endpointMap)) {
+        const existing = byHost.get(target.host);
+        if (!existing) {
+          byHost.set(target.host, { ...target });
+        } else if (target.required && !existing.required) {
+          existing.required = true;
+          if (target.claim && !existing.claim) existing.claim = target.claim;
+        }
+      }
+    }
+    return [...byHost.values()];
+  }
+
+  function sameOriginDnsHint(navEntries) {
+    let entries = navEntries;
+    if (!entries && typeof globalThis.performance !== 'undefined' && typeof globalThis.performance.getEntriesByType === 'function') {
+      entries = globalThis.performance.getEntriesByType('navigation');
+    }
+    const nav = Array.isArray(entries) && entries.length ? entries[0] : null;
+    if (!nav || !Number.isFinite(nav.domainLookupStart) || !Number.isFinite(nav.domainLookupEnd)) return null;
+    const delta = nav.domainLookupEnd - nav.domainLookupStart;
+    if (!Number.isFinite(delta) || delta <= 0) return null;
+    return Math.round(delta);
+  }
+
+  async function detectWebClientCapabilities(env = {}) {
+    const g = env.global || (typeof globalThis !== 'undefined' ? globalThis : {});
+    const nav = env.navigator || g.navigator || {};
+    const videoDecoder = env.VideoDecoder !== undefined ? env.VideoDecoder : g.VideoDecoder;
+    let h264 = false;
+    let av1 = false;
+    if (videoDecoder && typeof videoDecoder.isConfigSupported === 'function') {
+      try {
+        const h264Res = await videoDecoder.isConfigSupported({ codec: 'avc1.42001E' });
+        h264 = Boolean(h264Res && h264Res.supported);
+      } catch {
+        h264 = false;
+      }
+      try {
+        const av1Res = await videoDecoder.isConfigSupported({ codec: 'av01.0.04M.08' });
+        av1 = Boolean(av1Res && av1Res.supported);
+      } catch {
+        av1 = false;
+      }
+    }
+    const clipboard = Boolean(
+      nav.clipboard && (typeof nav.clipboard.readText === 'function' || typeof nav.clipboard.writeText === 'function')
+    );
+    const getScreenDetailsFn = env.getScreenDetails !== undefined ? env.getScreenDetails : g.getScreenDetails;
+    const multiScreen = typeof getScreenDetailsFn === 'function';
+    return {
+      webCodecs: Boolean(videoDecoder && typeof videoDecoder.isConfigSupported === 'function'),
+      h264,
+      av1,
+      clipboard,
+      multiScreen
+    };
+  }
+
+  function buildHelpdeskUrl({
+    baseUrl = typeof location !== 'undefined' ? location.href : 'https://linecheck.avd-ops.dev/',
+    cloud = 'commercial',
+    pack = '',
+    workloads = [],
+    region = '',
+    lite = false
+  } = {}) {
+    const url = new URL(baseUrl);
+    url.search = '';
+    url.hash = '';
+    if (cloud === 'gov') url.searchParams.set('cloud', 'gov');
+    const cleanWorkloads = Array.isArray(workloads)
+      ? [...new Set(workloads.filter((w) => ['avd', 'w365', 'teams', 'm365'].includes(w)))]
+      : [];
+    if (cleanWorkloads.length > 1) {
+      url.searchParams.set('workloads', cleanWorkloads.join(','));
+    } else if (cleanWorkloads.length === 1) {
+      const single = cleanWorkloads[0];
+      url.searchParams.set('pack', single === 'avd' && cloud === 'gov' ? 'avd-gov' : single);
+    } else if (pack && ['generic', 'avd', 'avd-gov', 'w365', 'teams', 'm365'].includes(pack)) {
+      url.searchParams.set('pack', pack === 'avd' && cloud === 'gov' ? 'avd-gov' : pack);
+    }
+    if (typeof region === 'string' && /^[a-z0-9]+$/.test(region)) {
+      url.searchParams.set('region', region);
+    }
+    if (lite) {
+      url.searchParams.set('lite', '1');
+    }
+    return url.href;
   }
 
   function selectRegions(regions, geographies, targetId = '') {
@@ -189,10 +298,14 @@
   }
 
   async function measureSamples({ probe: probeFn, now = () => globalThis.performance.now(), samples = 8, stopOnStall = false }) {
+    let warmUpMs = null;
     try {
-      await probeFn();
+      const wStart = now();
+      const wRet = await probeFn();
+      const wElapsed = Math.max(0, now() - wStart);
+      warmUpMs = wElapsed > 0 ? wElapsed : Number.isFinite(wRet) && wRet >= 0 ? wRet : wElapsed;
     } catch {
-      return { status: 'blocked', median: null, jitter: null, jitterFloor: false, stalls: 0, slowSamples: 0, samples: [] };
+      return { status: 'blocked', median: null, warmUpMs: null, setupMs: null, jitter: null, jitterFloor: false, stalls: 0, slowSamples: 0, samples: [] };
     }
 
     const timed = new Array(samples).fill(null);
@@ -200,14 +313,17 @@
     for (let index = 0; index < samples; index++) {
       const started = now();
       try {
-        await probeFn();
-        timed[index] = Math.max(0, now() - started);
+        const sRet = await probeFn();
+        const sElapsed = Math.max(0, now() - started);
+        timed[index] = sElapsed > 0 ? sElapsed : Number.isFinite(sRet) && sRet >= 0 ? sRet : sElapsed;
       } catch {
         stalls++;
         if (stopOnStall) {
           return {
             status: 'blocked',
             median: null,
+            warmUpMs: Math.round(warmUpMs),
+            setupMs: null,
             jitter: null,
             jitterFloor: false,
             stalls,
@@ -219,10 +335,11 @@
     }
     const values = timed.filter(Number.isFinite);
     if (!values.length) {
-      return { status: 'blocked', median: null, jitter: null, jitterFloor: false, stalls, slowSamples: 0, samples: [] };
+      return { status: 'blocked', median: null, warmUpMs: Math.round(warmUpMs), setupMs: null, jitter: null, jitterFloor: false, stalls, slowSamples: 0, samples: [] };
     }
 
     const center = median(values);
+    const setupMs = Number.isFinite(warmUpMs) && Number.isFinite(center) ? Math.max(0, Math.round(warmUpMs - center)) : null;
     const differences = timed.slice(1).flatMap((value, index) =>
       Number.isFinite(value) && Number.isFinite(timed[index]) ? [Math.abs(value - timed[index])] : []
     );
@@ -230,6 +347,8 @@
     return {
       status: 'reached',
       median: center,
+      warmUpMs: Math.round(warmUpMs),
+      setupMs,
       jitter: rawJitter,
       jitterFloor: rawJitter !== null && rawJitter < 2,
       stalls,
@@ -375,15 +494,36 @@
     const reachHosts = targets.map((t) => t.host);
     const regHosts = regions.map((r) => regionalHost(regionMap, r));
     const targetHost = resolvedTarget ? [regionalHost(regionMap, resolvedTarget)] : [];
-    const resolvedEnv = env || (probeImpl || now ? {
-      fetch: probeImpl || ((url, init) => globalThis.fetch(url, init)),
-      now: now || (() => performance.now()),
-      dateNow: Date.now,
-      random: Math.random,
-      setTimeout: (fn, ms) => setTimeout(fn, Math.min(ms, 5)),
-      clearTimeout: (id) => clearTimeout(id),
-      AbortController
-    } : undefined);
+    const baseFetch = (env && env.fetch) || probeImpl || ((url, init) => globalThis.fetch(url, init));
+    const baseNow = (env && env.now) || now || (() => performance.now());
+    const reachHostSet = new Set(reachHosts);
+    const reachWarmUps = new Map();
+    const wrappedFetch = (url, init) => {
+      let host = null;
+      try {
+        host = new URL(url).hostname.toLowerCase();
+      } catch { /* ignore */ }
+      if (!host || !reachHostSet.has(host) || reachWarmUps.has(host)) {
+        return baseFetch(url, init);
+      }
+      const t0 = baseNow();
+      return Promise.resolve().then(() => baseFetch(url, init)).then((res) => {
+        if (!reachWarmUps.has(host)) {
+          reachWarmUps.set(host, Math.max(0, baseNow() - t0));
+        }
+        return res;
+      });
+    };
+    const resolvedEnv = {
+      ...(env || {}),
+      fetch: wrappedFetch,
+      now: baseNow,
+      dateNow: (env && env.dateNow) || Date.now,
+      random: (env && env.random) || Math.random,
+      setTimeout: (env && env.setTimeout) || (probeImpl || now ? (fn, ms) => setTimeout(fn, Math.min(ms, 5)) : (fn, ms) => setTimeout(fn, ms)),
+      clearTimeout: (env && env.clearTimeout) || ((id) => clearTimeout(id)),
+      AbortController: (env && env.AbortController) || AbortController
+    };
     const phases = [
       {
         name: 'Reachability',
@@ -428,15 +568,28 @@
       onProgress('Region ranking');
       if (resolvedTarget) onProgress('Target region');
     }
-    const toMeasurement = (m) => {
+    const toMeasurement = (m, warmUpOverride = null) => {
       if (!m || m.median === null || m.median === undefined) {
-        return { status: 'blocked', median: null, jitter: null, stalls: m ? (m.stalls || 0) : 0, slowSamples: null, samples: (m && m.samples) || [] };
+        return {
+          status: 'blocked',
+          median: null,
+          warmUpMs: Number.isFinite(warmUpOverride) ? Math.round(warmUpOverride) : null,
+          setupMs: null,
+          jitter: null,
+          stalls: m ? (m.stalls || 0) : 0,
+          slowSamples: null,
+          samples: (m && m.samples) || []
+        };
       }
-      const center = m.median;
+      const center = Math.round(m.median);
       const samples = m.samples || [];
+      const warmUpMs = Number.isFinite(warmUpOverride) ? Math.round(warmUpOverride) : null;
+      const setupMs = warmUpMs !== null ? Math.max(0, Math.round(warmUpMs - center)) : null;
       return {
         status: 'reached',
         median: center,
+        warmUpMs,
+        setupMs,
         jitter: m.jitter ?? null,
         stalls: m.stalls || 0,
         slowSamples: samples.filter((v) => v > center * 3).length,
@@ -445,7 +598,7 @@
     };
     const hostResults = targets.map((target, idx) => ({
       target,
-      result: toMeasurement(reachOut && reachOut[idx])
+      result: toMeasurement(reachOut && reachOut[idx], reachWarmUps.get(target.host.toLowerCase()))
     }));
     const jitterResult = toMeasurement(jitterOut && jitterOut[0]);
     const regionResults = regions.map((region, idx) => ({
@@ -472,8 +625,13 @@
     isPublicHost,
     validatePack,
     regionalHost,
+    regionsForCloud,
     connectOrigins,
     probeTargets,
+    combineWorkloadTargets,
+    sameOriginDnsHint,
+    detectWebClientCapabilities,
+    buildHelpdeskUrl,
     selectRegions,
     median,
     probeOnce,

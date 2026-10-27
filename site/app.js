@@ -7,6 +7,7 @@
   const portalEngine = window.AvdOpsEngine || {};
 
   const $ = (id) => document.getElementById(id);
+  const cloudSelect = $('cloud-select');
   const packSelect = $('pack-select');
   const regionSelect = $('region-select');
   const runButton = $('run-check');
@@ -22,6 +23,8 @@
   const IDS = STEPS.map((s) => s.id);
   const NAMES = { check: 'Check', results: 'Results', context: 'Context', share: 'Share' };
   const PACK_KEY = 'avd-linecheck-pack';
+  const PACK_IDS = ['generic', 'avd', 'avd-gov', 'w365', 'teams', 'm365'];
+  const WORKLOAD_IDS = ['avd', 'w365', 'teams', 'm365'];
   const REPO_URL = 'https://github.com/avd-ops/avd-linecheck';
 
   const statusNames = {
@@ -41,6 +44,7 @@
   let packData = null;
   let lastRun = null;
   let lastExport = null;
+  let baselineExport = null;
   let showAllRegions = false;
   let contextDone = false;
   let shareDone = false;
@@ -176,20 +180,23 @@
 
   try {
     const savedPack = localStorage.getItem(PACK_KEY);
-    if (savedPack === 'generic' || savedPack === 'avd') {
+    if (PACK_IDS.includes(savedPack)) {
       $('default-pack').value = savedPack;
       packSelect.value = savedPack;
+      if (savedPack === 'avd-gov' && cloudSelect) cloudSelect.value = 'gov';
     }
   } catch { /* storage blocked */ }
 
   $('default-pack').addEventListener('change', () => {
     const val = $('default-pack').value;
     try {
-      if (val === 'generic' || val === 'avd') localStorage.setItem(PACK_KEY, val);
+      if (PACK_IDS.includes(val)) localStorage.setItem(PACK_KEY, val);
       else localStorage.removeItem(PACK_KEY);
     } catch { /* storage blocked */ }
-    if (val === 'generic' || val === 'avd') {
+    if (PACK_IDS.includes(val)) {
       packSelect.value = val;
+      if (val === 'avd-gov' && cloudSelect) cloudSelect.value = 'gov';
+      syncWorkloadsFromPack();
       selectionChanged();
     }
   });
@@ -197,6 +204,10 @@
   if (new URL(location.href).searchParams.has('lite')) {
     $('lite-mode').checked = true;
   }
+  $('lite-mode').addEventListener('change', () => {
+    if ($('hd-lite')) $('hd-lite').checked = $('lite-mode').checked;
+    updateHelpdeskLinks();
+  });
 
   $('reset').addEventListener('click', () => {
     try { localStorage.removeItem(PACK_KEY); } catch { /* ignore */ }
@@ -315,38 +326,122 @@
       });
   }
 
+  function currentCloud() {
+    if (cloudSelect && cloudSelect.value === 'gov') return 'gov';
+    if (packSelect.value === 'avd-gov') return 'gov';
+    return 'commercial';
+  }
+
+  function selectedWorkloads() {
+    return [...document.querySelectorAll('input[name="workload-id"]:checked')].map((i) => i.value);
+  }
+
+  function syncWorkloadsFromPack() {
+    const p = packSelect.value;
+    const targetWorkload = p === 'avd-gov' ? 'avd' : WORKLOAD_IDS.includes(p) ? p : '';
+    document.querySelectorAll('input[name="workload-id"]').forEach((input) => {
+      input.checked = Boolean(targetWorkload && input.value === targetWorkload);
+    });
+  }
+
+  function syncPackFromWorkloads() {
+    const wl = selectedWorkloads();
+    const cloud = currentCloud();
+    if (wl.length === 1) {
+      packSelect.value = wl[0] === 'avd' && cloud === 'gov' ? 'avd-gov' : wl[0];
+    } else if (wl.length > 1) {
+      if (wl.includes('avd')) packSelect.value = cloud === 'gov' ? 'avd-gov' : 'avd';
+      else packSelect.value = wl[0];
+    }
+  }
+
   async function init() {
     renderSteps();
     initCaptureControls();
     initContextControls();
-    const [generic, avd, endpointMap, regionMap] = await Promise.all([
+    const [generic, avd, avdGov, w365, teams, m365, endpointMap, regionMap] = await Promise.all([
       json('packs/generic.json'),
       json('packs/avd.json'),
+      json('packs/avd-gov.json'),
+      json('packs/w365.json'),
+      json('packs/teams.json'),
+      json('packs/m365.json'),
       json('packs/endpoints.json'),
       json('packs/regions.json')
     ]);
-    const packs = { generic, avd };
-    for (const pack of Object.values(packs)) engine.validatePack(pack, endpointMap, regionMap.regions);
-    const regions = regionMap.regions;
+    const packs = { generic, avd, 'avd-gov': avdGov, w365, teams, m365 };
+    for (const pack of Object.values(packs)) {
+      const regList = pack.cloud === 'gov' ? regionMap.govRegions : regionMap.regions;
+      engine.validatePack(pack, endpointMap, regList);
+    }
+    const allRegions = [...regionMap.regions, ...(regionMap.govRegions || [])];
+    const allHostIds = [...new Set(Object.values(packs).flatMap((p) => [
+      ...p.hosts.map((h) => h.id),
+      ...(p.notTested || [])
+    ]))];
     const url = new URL(location.href);
+    const requestedCloud = url.searchParams.get('cloud');
     const requestedPack = url.searchParams.get('pack');
-    if (requestedPack === 'avd' || url.searchParams.has('region')) packSelect.value = 'avd';
-    if (requestedPack === 'generic' || requestedPack === 'avd') packSelect.value = requestedPack;
+    const requestedWorkloads = (url.searchParams.get('workloads') || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter((s) => WORKLOAD_IDS.includes(s));
     const requestedRegion = url.searchParams.get('region');
+
+    if (requestedCloud === 'gov' || requestedPack === 'avd-gov' || /^usgov/.test(requestedRegion || '')) {
+      if (cloudSelect) cloudSelect.value = 'gov';
+      packSelect.value = 'avd-gov';
+    } else if (requestedPack && PACK_IDS.includes(requestedPack)) {
+      packSelect.value = requestedPack;
+    } else if (url.searchParams.has('region')) {
+      packSelect.value = currentCloud() === 'gov' ? 'avd-gov' : 'avd';
+    }
+
+    if (requestedWorkloads.length) {
+      document.querySelectorAll('input[name="workload-id"]').forEach((input) => {
+        input.checked = requestedWorkloads.includes(input.value);
+      });
+      syncPackFromWorkloads();
+    } else {
+      syncWorkloadsFromPack();
+    }
 
     packData = { packs, endpointMap, regionMap };
     for (const pack of Object.values(packs)) {
       pack.allowedFindingIds = [
-        'site.origin', 'target-region', 'jitter.primary', 'slow-samples', 'stalls.primary', 'download', 'loaded-latency',
+        'site.origin', 'target-region', 'jitter.primary', 'slow-samples', 'stalls.primary',
+        'download', 'loaded-latency', 'dns.origin', 'setup.max',
         ...generalNotTested,
         ...endpointMap.views.browser.probe,
         ...endpointMap.views.browser.notTested,
-        ...pack.hosts.map((host) => host.id),
-        ...regions.map((region) => `region.${region.id}`)
+        ...allHostIds,
+        ...allRegions.map((region) => `region.${region.id}`)
       ];
     }
-    packSelect.addEventListener('change', selectionChanged);
-    regionSelect.addEventListener('change', () => lastRun ? selectTargetRegion(regionSelect.value) : updatePackView());
+    if (cloudSelect) {
+      cloudSelect.addEventListener('change', () => {
+        if (cloudSelect.value === 'gov' && packSelect.value === 'avd') packSelect.value = 'avd-gov';
+        else if (cloudSelect.value === 'commercial' && packSelect.value === 'avd-gov') packSelect.value = 'avd';
+        selectionChanged();
+      });
+    }
+    packSelect.addEventListener('change', () => {
+      if (packSelect.value === 'avd-gov' && cloudSelect) cloudSelect.value = 'gov';
+      else if (packSelect.value === 'avd' && cloudSelect && cloudSelect.value === 'gov') cloudSelect.value = 'commercial';
+      syncWorkloadsFromPack();
+      selectionChanged();
+    });
+    document.querySelectorAll('input[name="workload-id"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        syncPackFromWorkloads();
+        selectionChanged();
+      });
+    });
+    regionSelect.addEventListener('change', () => {
+      updateHelpdeskLinks();
+      if (lastRun) selectTargetRegion(regionSelect.value);
+      else updatePackView();
+    });
     document.querySelectorAll('input[name="region-geo"]').forEach((input) => input.addEventListener('change', selectionChanged));
     runButton.addEventListener('click', runCheck);
     $('show-regions').addEventListener('click', () => {
@@ -357,17 +452,23 @@
     $('download-json').addEventListener('click', downloadJson);
     $('download-intake').addEventListener('click', downloadIntake);
     $('read-result').addEventListener('click', readSharedResult);
+    $('keep-baseline').addEventListener('click', keepAsBaseline);
+    $('run-compare').addEventListener('click', runCompare);
+    $('clear-baseline').addEventListener('click', clearBaseline);
     $('full-regions').addEventListener('change', () => {
       if (lastRun) {
         lastRun.fullRegions = $('full-regions').checked;
         lastExport = exporter.makeExport(lastRun);
       }
     });
+    initHelpdeskControls();
     updatePackView();
-    const targetRegions = currentPack().regionalProbe
-      ? currentPack().id === 'avd' ? regionMap.avdTargetRegionIds : regions.map((region) => region.id)
-      : [];
-    if (targetRegions.includes(requestedRegion)) regionSelect.value = requestedRegion;
+    const validRegionIds = availableTargetRegions().map((r) => r.id);
+    if (requestedRegion && validRegionIds.includes(requestedRegion)) {
+      regionSelect.value = requestedRegion;
+      if ($('hd-region')) $('hd-region').value = requestedRegion;
+    }
+    updateHelpdeskLinks();
     runButton.disabled = false;
   }
 
@@ -375,8 +476,31 @@
     return packData.packs[packSelect.value] ?? packData.packs.generic;
   }
 
+  function activeWorkloadPacks() {
+    const wl = selectedWorkloads();
+    const cloud = currentCloud();
+    if (!wl.length) return [currentPack()];
+    return wl.map((id) => {
+      if (id === 'avd' && cloud === 'gov') return packData.packs['avd-gov'];
+      return packData.packs[id];
+    }).filter(Boolean);
+  }
+
+  function availableTargetRegions() {
+    if (!packData) return [];
+    const cloud = currentCloud();
+    const packs = activeWorkloadPacks();
+    if (!packs.some((p) => p.regionalProbe)) return [];
+    if (cloud === 'gov') return packData.regionMap.govRegions || [];
+    const isAvdOrW365 = packs.some((p) => p.id === 'avd' || p.id === 'w365');
+    return isAvdOrW365
+      ? packData.regionMap.regions.filter((r) => packData.regionMap.avdTargetRegionIds.includes(r.id))
+      : packData.regionMap.regions;
+  }
+
   function selectionChanged() {
     updatePackView();
+    updateHelpdeskLinks();
     if (lastRun) {
       lastRun = null;
       lastExport = null;
@@ -392,45 +516,76 @@
   }
 
   function targetsFor(pack) {
-    return pack.id === 'avd'
-      ? engine.probeTargets(pack, packData.endpointMap)
-      : [
-        { id: 'site.origin', host: location.host, purpose: 'This page', required: true, claim: null },
-        ...engine.probeTargets(pack, packData.endpointMap)
-      ];
+    const wlPacks = activeWorkloadPacks();
+    if (wlPacks.length > 1) {
+      return engine.combineWorkloadTargets(wlPacks, packData.endpointMap);
+    }
+    if (pack.id !== 'generic') {
+      return engine.probeTargets(pack, packData.endpointMap);
+    }
+    return [
+      { id: 'site.origin', host: location.host, purpose: 'This page', required: true, claim: null },
+      ...engine.probeTargets(pack, packData.endpointMap)
+    ];
   }
 
   function updatePackView() {
     if (!packData) return;
     const pack = currentPack();
+    const cloud = currentCloud();
+    const wlPacks = activeWorkloadPacks();
+    const hasRegionalProbe = wlPacks.some((p) => p.regionalProbe);
     const priorRegion = regionSelect.value;
-    const regionIds = pack.regionalProbe
-      ? pack.id === 'avd' ? packData.regionMap.avdTargetRegionIds : packData.regionMap.regions.map((region) => region.id)
-      : [];
-    $('region-control').hidden = !pack.regionalProbe;
-    $('region-field').hidden = !pack.regionalProbe;
+    const targetRegions = availableTargetRegions();
+    const regionIds = targetRegions.map((r) => r.id);
+
+    $('gov-shortpath-banner').hidden = cloud !== 'gov';
+    document.querySelectorAll('#geo-fieldset label[data-cloud]').forEach((label) => {
+      const isMatch = label.dataset.cloud === cloud;
+      label.hidden = !isMatch;
+      const input = label.querySelector('input');
+      if (input && isMatch && ![...document.querySelectorAll(`#geo-fieldset label[data-cloud="${cloud}"] input:checked`)].length) {
+        input.checked = true;
+      }
+    });
+
+    $('region-control').hidden = !hasRegionalProbe;
+    $('region-field').hidden = !hasRegionalProbe;
     regionSelect.replaceChildren(new Option('No region selected', ''));
-    for (const region of packData.regionMap.regions.filter((item) => regionIds.includes(item.id))) {
+    for (const region of targetRegions) {
       regionSelect.append(new Option(`${region.name} (${region.geo})`, region.id));
     }
     if (regionIds.includes(priorRegion)) regionSelect.value = priorRegion;
-    $('region-label').firstChild.textContent = pack.id === 'avd' ? 'Host pool region ' : 'Region to compare ';
-    $('avd-links').hidden = pack.id !== 'avd';
+    $('region-label').firstChild.textContent = (pack.id === 'avd' || pack.id === 'avd-gov' || pack.id === 'w365') ? 'Host pool region ' : 'Region to compare ';
+    const hasAvd = wlPacks.some((p) => p.id === 'avd' || p.id === 'avd-gov' || p.id === 'w365');
+    const hasTeams = wlPacks.some((p) => p.id === 'teams');
+    $('avd-links').hidden = !hasAvd;
+    if (hasAvd && pack.links && pack.links.endpoints) {
+      $('avd-endpoints-link').href = pack.links.endpoints;
+    }
+    $('teams-links').hidden = !hasTeams;
     const targets = targetsFor(pack).map((target) => `${target.host} - ${target.purpose}`);
-    $('pack-warning').hidden = !exporter.hasCustomHosts(pack);
-    if (pack.regionalProbe) targets.push(...packData.regionMap.regions.map((region) => `${engine.regionalHost(packData.regionMap, region)} - regional timing`));
+    $('pack-warning').hidden = !wlPacks.some((p) => exporter.hasCustomHosts(p));
+    const activeRegionPool = engine.regionsForCloud(packData.regionMap, cloud);
+    if (hasRegionalProbe) {
+      targets.push(...activeRegionPool.map((region) => `${engine.regionalHost(packData.regionMap, region)} - regional timing`));
+    }
     const list = $('target-list');
     list.replaceChildren(...targets.map((text) => el('li', { textContent: text })));
   }
 
   function selectedRegions() {
-    if (!currentPack().regionalProbe) return [];
-    const geographies = [...document.querySelectorAll('input[name="region-geo"]:checked')].map((input) => input.value);
-    return engine.selectRegions(packData.regionMap.regions, geographies, regionSelect.value);
+    const wlPacks = activeWorkloadPacks();
+    if (!wlPacks.some((p) => p.regionalProbe)) return [];
+    const cloud = currentCloud();
+    const pool = engine.regionsForCloud(packData.regionMap, cloud);
+    const geographies = selectedGeographies();
+    return engine.selectRegions(pool, geographies, regionSelect.value);
   }
 
   function selectedGeographies() {
-    return [...document.querySelectorAll('input[name="region-geo"]:checked')].map((input) => input.value);
+    const cloud = currentCloud();
+    return [...document.querySelectorAll(`#geo-fieldset label[data-cloud="${cloud}"] input[name="region-geo"]:checked`)].map((input) => input.value);
   }
 
   function browserDetails() {
@@ -471,27 +626,35 @@
   // ---- Phased check execution ----
   async function runCheck() {
     const pack = currentPack();
+    const cloud = currentCloud();
+    const wlPacks = activeWorkloadPacks();
+    const workloads = selectedWorkloads();
+    const hasRegionalProbe = wlPacks.some((p) => p.regionalProbe);
     const targets = targetsFor(pack);
     const regions = selectedRegions();
     const geographies = selectedGeographies();
-    const targetRegion = pack.regionalProbe ? packData.regionMap.regions.find((region) => region.id === regionSelect.value) : null;
+    const activeRegionPool = engine.regionsForCloud(packData.regionMap, cloud);
+    const targetRegion = hasRegionalProbe ? activeRegionPool.find((region) => region.id === regionSelect.value) : null;
     const lite = $('lite-mode').checked || new URL(location.href).searchParams.has('lite');
-    if (pack.regionalProbe && regions.length === 0) {
+    if (hasRegionalProbe && regions.length === 0) {
       runState.textContent = 'Pick at least one geography or choose a region to compare.';
       return;
     }
     const total = targets.length + regions.length + (targetRegion ? 4 : 3);
     let done = 0;
     const findings = [];
-    const notTested = pack.id === 'avd'
-      ? [...packData.endpointMap.views.browser.notTested, ...generalNotTested]
-      : [...generalNotTested];
-    if (pack.regionalProbe && !targetRegion) notTested.push('target-region');
+    const packNotTested = wlPacks.flatMap((p) => [
+      ...(p.id === 'avd' ? packData.endpointMap.views.browser.notTested : []),
+      ...(p.notTested || [])
+    ]);
+    const notTested = [...new Set([...packNotTested, ...generalNotTested])];
+    if (hasRegionalProbe && !targetRegion) notTested.push('target-region');
 
     runButton.disabled = true;
+    if (cloudSelect) cloudSelect.disabled = true;
     packSelect.disabled = true;
     regionSelect.disabled = true;
-    document.querySelectorAll('input[name="region-geo"]').forEach((input) => { input.disabled = true; });
+    document.querySelectorAll('input[name="workload-id"], input[name="region-geo"]').forEach((input) => { input.disabled = true; });
     $('full-regions').disabled = true;
     $('copy-summary').disabled = true;
     $('download-json').disabled = true;
@@ -508,21 +671,37 @@
     $('full-regions').checked = false;
     addProgress(done, total, 'Starting the check...');
 
-    const phased = await engine.runProbePhases({
-      targets,
-      regions,
-      regionMap: packData.regionMap,
-      targetRegionId: targetRegion ? targetRegion.id : null,
-      deadlineMs: 85000,
-      onProgress: (phase) => {
-        done++;
-        addProgress(done, total, `Running ${phase}...`);
-      }
-    });
+    const [phased, webClient] = await Promise.all([
+      engine.runProbePhases({
+        targets,
+        regions,
+        regionMap: packData.regionMap,
+        targetRegionId: targetRegion ? targetRegion.id : null,
+        deadlineMs: 85000,
+        onProgress: (phase) => {
+          done++;
+          addProgress(done, total, `Running ${phase}...`);
+        }
+      }),
+      engine.detectWebClientCapabilities()
+    ]);
 
     const hostResults = phased.hostResults;
-    findings.push(...hostResults.map(({ target, result }) => verdict.reachabilityFinding(target, result.status, result.median)));
+    findings.push(...hostResults.map(({ target, result }) =>
+      verdict.reachabilityFinding(target, result.status, result.median, result.setupMs)
+    ));
     notTested.push(...hostResults.filter(({ result }) => result.status !== 'reached').map(({ target }) => target.id));
+
+    const setupValues = hostResults
+      .map(({ result }) => (result && Number.isFinite(result.setupMs) ? result.setupMs : null))
+      .filter((v) => v !== null);
+    if (setupValues.length) {
+      findings.push(addInfo('setup.max', Math.max(...setupValues), 'ms'));
+    }
+    const dnsOriginMs = engine.sameOriginDnsHint();
+    if (dnsOriginMs !== null) {
+      findings.push(addInfo('dns.origin', dnsOriginMs, 'ms'));
+    }
 
     const regionResults = verdict.rankRegions(phased.regionResults);
     findings.push(...regionResults.map(({ region, result }) => ({
@@ -584,10 +763,17 @@
       regionResults,
       selectedGeographies: geographies
     });
-    const relayNote = verdict.relayGeographyNote(regionResults);
+    const relayNote = cloud === 'gov' ? null : verdict.relayGeographyNote(regionResults);
+    const govShortpath = verdict.cloudShortpathNote(cloud);
+    const hasTeams = wlPacks.some((p) => p.id === 'teams');
     const browser = browserDetails();
     const run = {
       pack,
+      cloud,
+      workloads,
+      hasTeams,
+      govShortpath,
+      webClient,
       createdAt: new Date().toISOString(),
       browser,
       platform: browser.platform,
@@ -607,9 +793,10 @@
     renderRun(run, 'Check complete. Nothing was shared.');
     progress.value = progress.max;
     runButton.disabled = false;
+    if (cloudSelect) cloudSelect.disabled = false;
     packSelect.disabled = false;
     regionSelect.disabled = false;
-    document.querySelectorAll('input[name="region-geo"]').forEach((input) => { input.disabled = false; });
+    document.querySelectorAll('input[name="workload-id"], input[name="region-geo"]').forEach((input) => { input.disabled = false; });
     $('full-regions').disabled = false;
     $('copy-summary').disabled = false;
     $('download-json').disabled = false;
@@ -621,16 +808,21 @@
     run.findings = run.findings.filter((finding) => finding.id !== 'target-region');
     run.notTested = run.notTested.filter((id) => id !== 'target-region');
     run.region = regionId || null;
+    const wlPacks = activeWorkloadPacks();
+    const hasRegionalProbe = wlPacks.some((p) => p.regionalProbe) || run.pack.regionalProbe;
     if (!regionId) {
-      if (run.pack.regionalProbe) run.notTested.push('target-region');
+      if (hasRegionalProbe) run.notTested.push('target-region');
       return;
     }
     const detail = run.targetRegionDetail && run.targetRegionDetail.regionId === regionId
       ? run.targetRegionDetail.result
       : run.regionResults.find((entry) => entry.region.id === regionId)?.result;
     const medianMs = detail && detail.status === 'reached' ? detail.median : null;
-    if (run.pack.thresholds.length) {
-      run.findings.push(verdict.rttFinding(medianMs, run.pack.thresholds, { id: 'target-region', required: true }));
+    const thresholds = run.pack.thresholds && run.pack.thresholds.length
+      ? run.pack.thresholds
+      : (wlPacks.find((p) => p.thresholds && p.thresholds.length)?.thresholds || []);
+    if (thresholds.length) {
+      run.findings.push(verdict.rttFinding(medianMs, thresholds, { id: 'target-region', required: true }));
     } else {
       run.findings.push(addInfo('target-region', medianMs, 'ms'));
     }
@@ -639,7 +831,7 @@
 
   function renderRun(run, statusMessage) {
     lastExport = exporter.makeExport(run);
-    const overall = verdict.overallVerdict(run.findings);
+    const overall = verdict.overallVerdict(run.findings, { vantage: run.vantage === 'likely-session-host' ? 'likely-session-host' : 'device' });
     const tone = overall.status === 'pass' ? 'good' : (overall.status === 'warn' || overall.status === 'blocked') ? 'ok' : overall.status === 'fail' ? 'poor' : '';
     const overallEl = $('overall');
     overallEl.className = `bl overall${tone ? ` ${tone}` : ''}`;
@@ -665,11 +857,45 @@
       relayEl.textContent = '';
     }
 
+    const govEl = $('gov-shortpath-note');
+    if (govEl) {
+      if (run.govShortpath) {
+        govEl.hidden = false;
+        govEl.textContent = `${run.govShortpath.sentence} (${run.govShortpath.claim})`;
+      } else {
+        govEl.hidden = true;
+        govEl.textContent = '';
+      }
+    }
+
+    const teamsNoteEl = $('teams-vdi-note');
+    if (teamsNoteEl) {
+      teamsNoteEl.hidden = !run.hasTeams && run.pack.id !== 'teams';
+    }
+
     renderFindings(run.findings.filter((finding) => !finding.id.startsWith('region.')));
+    renderWebClientReadiness(run.webClient);
     renderNotTested(run.notTested);
     renderRegionRanking(run);
     runState.textContent = statusMessage;
     renderSteps();
+  }
+
+  function renderWebClientReadiness(webClient) {
+    const box = $('webclient-readiness');
+    const list = $('webclient-list');
+    if (!box || !list || !webClient) {
+      if (box) box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const items = [
+      `WebCodecs H.264 decode: ${webClient.h264 ? 'Supported' : 'Not detected'}`,
+      `WebCodecs AV1 decode: ${webClient.av1 ? 'Supported' : 'Not detected'}`,
+      `Async Clipboard API: ${webClient.clipboard ? 'Supported' : 'Not detected'}`,
+      `Window Management API (multi-monitor): ${webClient.multiScreen ? 'Supported' : 'Not detected'}`
+    ];
+    list.replaceChildren(...items.map((text) => el('li', { textContent: text })));
   }
 
   function selectTargetRegion(regionId) {
@@ -703,7 +929,11 @@
       picker.name = 'region-target';
       picker.value = region.id;
       picker.checked = region.id === run.region;
-      picker.disabled = result.status !== 'reached' || (run.pack.id === 'avd' && !packData.regionMap.avdTargetRegionIds.includes(region.id));
+      picker.disabled = result.status !== 'reached' || (
+        run.pack.id === 'avd' && !packData.regionMap.avdTargetRegionIds.includes(region.id)
+      ) || (
+        run.pack.id === 'avd-gov' && !(packData.regionMap.avdGovTargetRegionIds || []).includes(region.id)
+      );
       picker.setAttribute('aria-label', `Use ${region.name} as the target region`);
       picker.addEventListener('change', () => { if (picker.checked) selectTargetRegion(region.id); });
       pickerCell.append(picker);
@@ -740,17 +970,22 @@
     if (!packData) return id;
     const endpoint = packData.endpointMap.endpoints.find((item) => item.id === id);
     if (endpoint) return `${endpoint.host} (${endpoint.purpose})`;
-    const customHost = currentPack().hosts.find((item) => item.id === id);
-    if (customHost) return `${customHost.host} (${customHost.purpose})`;
+    for (const pack of Object.values(packData.packs)) {
+      const host = pack.hosts.find((item) => item.id === id);
+      if (host) return `${host.host} (${host.purpose})`;
+    }
     const regionId = id.replace(/^region\./, '');
-    const region = packData.regionMap.regions.find((item) => item.id === regionId);
+    const allRegions = [...packData.regionMap.regions, ...(packData.regionMap.govRegions || [])];
+    const region = allRegions.find((item) => item.id === regionId);
     if (region) return `${region.name} regional timing`;
     return ({
       'site.origin': 'This page',
-      'target-region': currentPack().id === 'avd' ? 'Selected host pool region, measured from this browser' : 'Selected region, measured from this browser',
+      'target-region': (currentPack().id === 'avd' || currentPack().id === 'avd-gov' || currentPack().id === 'w365') ? 'Selected host pool region, measured from this browser' : 'Selected region, measured from this browser',
       'jitter.primary': 'Jitter to the primary host',
       'slow-samples': 'Slow samples',
       'stalls.primary': 'Timed-out jitter samples',
+      'setup.max': 'Highest cold connection setup overhead (DNS, TCP, TLS)',
+      'dns.origin': 'Same-origin DNS lookup hint for this site',
       download: 'Download sufficiency from this site',
       'loaded-latency': 'Latency while downloading',
       upload: 'Upload speed',
@@ -758,6 +993,10 @@
       'session-transport': 'Transport used by your desktop session',
       'session-host': 'Session host connectivity',
       'wildcard-endpoints': 'Wildcard service endpoints the browser cannot probe',
+      'gov.wvd': '*.wvd.azure.us (US Government feed, broker, and gateway wildcard)',
+      'gov.service': '*.service.windows.cloud.microsoft (US Government service wildcard)',
+      'gov.relay': 'UDP 3478 STUN Shortpath (TURN relay is Commercial-only)',
+      'teams.media-udp': 'UDP 3478-3481 media relays for Teams VDI SlimCore and WebRTC',
       dns: 'DNS lookup time for probe hosts',
       'packet-loss': 'Packet loss',
       vantage: "Whether this ran on the user's device or inside a remote session"
@@ -774,9 +1013,12 @@
         className: `outcome o-${finding.status}`,
         textContent: statusNames[finding.status] ?? 'Not measured'
       });
+      const setupSuffix = Number.isFinite(finding.setupMs)
+        ? ` (cold setup +${Math.round(finding.setupMs)} ms)`
+        : '';
       const valText = Number.isFinite(finding.value)
-        ? finding.unit === 'ms' && finding.id !== 'jitter.primary'
-          ? ` - at most ${Math.round(finding.value)} ms`
+        ? finding.unit === 'ms' && finding.id !== 'jitter.primary' && finding.id !== 'dns.origin' && finding.id !== 'setup.max'
+          ? ` - at most ${Math.round(finding.value)} ms${setupSuffix}`
           : ` - ${Math.round(finding.value)} ${finding.unit ?? ''}`
         : '';
       head.append(pill, document.createTextNode(` ${labelFor(finding.id)}${valText}`));
@@ -787,6 +1029,13 @@
         const help = el('p');
         const link1 = el('a', { href: 'steps/index.html?step=avd.connection-info', textContent: 'Check session Connection Information' });
         const link2 = el('a', { href: 'steps/index.html?step=avd.shortpath-test', textContent: 'Run the Microsoft Shortpath test' });
+        help.append(link1, document.createTextNode(' \u00b7 '), link2);
+        item.append(help);
+      }
+      if (finding.id.startsWith('teams.')) {
+        const help = el('p');
+        const link1 = el('a', { href: 'steps/index.html?step=teams.vdi-optimization', textContent: 'Verify Teams VDI optimization' });
+        const link2 = el('a', { href: 'steps/index.html?step=teams.logs.windows', textContent: 'Collect Teams support logs' });
         help.append(link1, document.createTextNode(' \u00b7 '), link2);
         item.append(help);
       }
@@ -1034,10 +1283,10 @@
     $('paste-findings').replaceChildren();
     $('paste-reply').hidden = false;
     try {
-      const result = exporter.parseSharedResult($('paste-input').value, currentPack());
+      const result = exporter.parseSharedResult($('paste-input').value, packData ? packData.packs : currentPack());
       const tone = result.overall.status === 'pass' ? 'good' : (result.overall.status === 'warn' || result.overall.status === 'blocked') ? 'ok' : result.overall.status === 'fail' ? 'poor' : '';
       $('paste-state').className = `bl run-state${tone ? ` ${tone}` : ''}`;
-      $('paste-state').textContent = `${result.overall.label}. ${result.sentencesAvailable
+      $('paste-state').textContent = `${result.overall.label} (${result.pack.id}). ${result.sentencesAvailable
         ? 'Shared result. Its wording was checked against this pack.'
         : 'This pack version differs. Numbers and states are shown; sentences may not match.'}`;
       const extraNotes = [];
@@ -1053,8 +1302,170 @@
       renderSteps();
     } catch {
       $('paste-state').className = 'bl run-state poor';
-      $('paste-state').textContent = 'This result is not valid for the selected pack.';
+      $('paste-state').textContent = 'This result is not valid for the shipped packs.';
       $('paste-note').textContent = '';
+    }
+  }
+
+  function keepAsBaseline() {
+    if (!lastExport) return;
+    baselineExport = lastExport;
+    $('baseline-state').textContent = `Baseline kept (${baselineExport.createdAt}). Run a second check or open Share to compare.`;
+    $('clear-baseline').hidden = false;
+  }
+
+  function clearBaseline() {
+    baselineExport = null;
+    $('baseline-state').textContent = '';
+    $('clear-baseline').hidden = true;
+    $('compare-reply').hidden = true;
+    $('compare-list').replaceChildren();
+  }
+
+  function runCompare() {
+    $('compare-list').replaceChildren();
+    $('compare-reply').hidden = false;
+    try {
+      const pastedText = $('compare-input').value.trim();
+      const pasted = pastedText
+        ? exporter.parseSharedResult(pastedText, packData ? packData.packs : currentPack())
+        : null;
+      let before = null;
+      let after = null;
+      if (baselineExport && lastExport && baselineExport !== lastExport && !pasted) {
+        before = baselineExport;
+        after = lastExport;
+      } else if (baselineExport && pasted) {
+        before = baselineExport;
+        after = pasted;
+      } else if (pasted && lastExport) {
+        before = pasted;
+        after = lastExport;
+      } else if (baselineExport && lastExport) {
+        before = baselineExport;
+        after = lastExport;
+      } else {
+        throw new Error('Need two runs');
+      }
+      const diff = exporter.compareResults(before, after);
+      $('compare-state').className = 'bl run-state';
+      $('compare-state').textContent = `Verdict: ${before.overall.status} -> ${after.overall.status}`;
+      const lines = [];
+      if (diff.rttDeltaMs !== null) {
+        const sign = diff.rttDeltaMs > 0 ? `+${diff.rttDeltaMs}` : String(diff.rttDeltaMs);
+        lines.push(`RTT change: ${diff.baseRttMs} ms -> ${diff.currRttMs} ms (${sign} ms)`);
+      }
+      if (diff.jitterDeltaMs !== null) {
+        const sign = diff.jitterDeltaMs > 0 ? `+${diff.jitterDeltaMs}` : String(diff.jitterDeltaMs);
+        lines.push(`Jitter change: ${diff.baseJitterMs} ms -> ${diff.currJitterMs} ms (${sign} ms)`);
+      }
+      if (diff.blockedCleared.length) {
+        lines.push(`Blocked checks cleared: ${diff.blockedCleared.map(labelFor).join(', ')}`);
+      }
+      if (diff.newlyBlocked.length) {
+        lines.push(`Newly blocked checks: ${diff.newlyBlocked.map(labelFor).join(', ')}`);
+      }
+      if (diff.caveatsCleared.length) {
+        lines.push(`Proxy or tunnel caveats cleared: ${diff.caveatsCleared.join(', ')}`);
+      }
+      if (diff.caveatsAdded.length) {
+        lines.push(`Proxy or tunnel caveats added: ${diff.caveatsAdded.join(', ')}`);
+      }
+      if (!lines.length) {
+        lines.push('No RTT, jitter, block, or caveat changes detected between the two results.');
+      }
+      $('compare-list').replaceChildren(...lines.map((text) => el('li', { textContent: text })));
+      shareDone = true;
+      renderSteps();
+    } catch {
+      $('compare-state').className = 'bl run-state poor';
+      $('compare-state').textContent = 'Keep a baseline run in step 2 or paste a valid result JSON to compare against the current run.';
+    }
+  }
+
+  function populateHelpdeskRegions() {
+    if (!packData || !$('hd-region')) return;
+    const cloud = $('hd-cloud').value;
+    const packId = $('hd-pack').value;
+    const prior = $('hd-region').value;
+    const regions = cloud === 'gov' || packId === 'avd-gov'
+      ? (packData.regionMap.govRegions || [])
+      : (packId === 'avd' || packId === 'w365')
+        ? packData.regionMap.regions.filter((r) => packData.regionMap.avdTargetRegionIds.includes(r.id))
+        : packData.regionMap.regions;
+    $('hd-region').replaceChildren(new Option('No region selected', ''));
+    for (const region of regions) {
+      $('hd-region').append(new Option(`${region.name} (${region.geo})`, region.id));
+    }
+    if (regions.some((r) => r.id === prior)) $('hd-region').value = prior;
+  }
+
+  function updateHelpdeskLinks() {
+    if (!packData) return;
+    const step1Url = engine.buildHelpdeskUrl({
+      baseUrl: location.href,
+      cloud: currentCloud(),
+      pack: packSelect.value,
+      workloads: selectedWorkloads(),
+      region: regionSelect.value,
+      lite: $('lite-mode').checked
+    });
+    if ($('helpdesk-url-step1')) $('helpdesk-url-step1').value = step1Url;
+
+    if ($('hd-cloud') && $('hd-pack') && $('hd-region') && $('hd-lite')) {
+      populateHelpdeskRegions();
+      const step4Url = engine.buildHelpdeskUrl({
+        baseUrl: location.href,
+        cloud: $('hd-cloud').value,
+        pack: $('hd-pack').value,
+        workloads: [],
+        region: $('hd-region').value,
+        lite: $('hd-lite').checked
+      });
+      if ($('helpdesk-url-step4')) $('helpdesk-url-step4').value = step4Url;
+    }
+  }
+
+  function initHelpdeskControls() {
+    if ($('hd-cloud')) {
+      $('hd-cloud').value = currentCloud();
+      $('hd-cloud').addEventListener('change', () => {
+        if ($('hd-cloud').value === 'gov' && $('hd-pack').value === 'avd') $('hd-pack').value = 'avd-gov';
+        else if ($('hd-cloud').value === 'commercial' && $('hd-pack').value === 'avd-gov') $('hd-pack').value = 'avd';
+        updateHelpdeskLinks();
+      });
+    }
+    if ($('hd-pack')) {
+      $('hd-pack').value = packSelect.value;
+      $('hd-pack').addEventListener('change', () => {
+        if ($('hd-pack').value === 'avd-gov' && $('hd-cloud')) $('hd-cloud').value = 'gov';
+        else if ($('hd-pack').value === 'avd' && $('hd-cloud') && $('hd-cloud').value === 'gov') $('hd-cloud').value = 'commercial';
+        updateHelpdeskLinks();
+      });
+    }
+    if ($('hd-region')) {
+      $('hd-region').addEventListener('change', updateHelpdeskLinks);
+    }
+    if ($('hd-lite')) {
+      $('hd-lite').checked = $('lite-mode').checked || true;
+      $('hd-lite').addEventListener('change', updateHelpdeskLinks);
+    }
+    const copyUrl = async (inputId, stateId) => {
+      const val = $(inputId)?.value || '';
+      if (!val) return;
+      try {
+        await navigator.clipboard.writeText(val);
+        $(stateId).textContent = 'Copied helpdesk link.';
+      } catch {
+        $(inputId)?.select();
+        $(stateId).textContent = 'Press Ctrl+C or Command+C to copy.';
+      }
+    };
+    if ($('copy-helpdesk-step1')) {
+      $('copy-helpdesk-step1').addEventListener('click', () => copyUrl('helpdesk-url-step1', 'helpdesk-state-step1'));
+    }
+    if ($('copy-helpdesk-step4')) {
+      $('copy-helpdesk-step4').addEventListener('click', () => copyUrl('helpdesk-url-step4', 'helpdesk-state-step4'));
     }
   }
 

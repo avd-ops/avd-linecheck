@@ -10,9 +10,9 @@ const exporter = require('../site/export.js');
 const {
   findingSentence, rttFinding, overallVerdict, reachabilityFinding,
   rankRegions, regionRating, visibleRegions, detectVantage,
-  detectProxyCaveats, relayGeographyNote, sentences, labels
+  detectProxyCaveats, relayGeographyNote, cloudShortpathNote, sentences, labels
 } = verdict;
-const { hasCustomHosts, makeExport, makeIntakeEntry, parseSharedResult, validateSentiment } = exporter;
+const { hasCustomHosts, makeExport, makeIntakeEntry, parseSharedResult, compareResults, validateSentiment } = exporter;
 
 const bands = [
   { below: 100, state: 'pass', claim: 'ideal' },
@@ -203,4 +203,89 @@ test('verdict labels and sentences stay plain-language and within reading-level 
     assert.ok(words.length <= 24, `sentence is concise (<= 24 words): "${text}"`);
     assert.doesNotMatch(text, /\b(telecommunications|infrastructure|instrumentation|synchronization|remediation|unauthenticated)\b/i);
   }
+});
+
+test('high-setup-overhead caveat surfaces when cold setup time is >= 250 ms', () => {
+  const caveats = detectProxyCaveats({
+    hostResults: [
+      { target: { id: 'h1', host: 'login.microsoftonline.com' }, result: { status: 'reached', median: 20, setupMs: 310 } },
+      { target: { id: 'h2', host: 'windows.cloud.microsoft' }, result: { status: 'reached', median: 45, setupMs: 40 } }
+    ],
+    regionResults: [],
+    selectedGeographies: []
+  });
+  const overhead = caveats.find((c) => c.id === 'high-setup-overhead');
+  assert.ok(overhead);
+  assert.ok(overhead.claims.includes('ref:avd-proxy#bypass-proxies'));
+  assert.ok(overhead.claims.includes('ref:rdp-traffic-optimization#no-tls-inspection'));
+});
+
+test('cloudShortpathNote returns cited Azure US Government Shortpath note only for gov', () => {
+  assert.equal(cloudShortpathNote('commercial'), null);
+  const note = cloudShortpathNote('gov');
+  assert.ok(note);
+  assert.equal(note.id, 'gov-shortpath-turn');
+  assert.ok(note.claims.includes('ref:configure-rdp-shortpath#turn-public-cloud-only'));
+});
+
+test('compareResults computes RTT/jitter deltas and blocked/caveat transitions', () => {
+  const baseline = {
+    overall: { status: 'blocked', label: 'Action needed' },
+    findings: [
+      { id: 'target-region', status: 'warn', value: 140, unit: 'ms', required: true },
+      { id: 'jitter.primary', status: 'info', value: 18, unit: 'ms', required: false },
+      { id: 'client.sign-in', status: 'blocked', value: null, required: true }
+    ],
+    caveats: [{ id: 'high-setup-overhead', sentence: 'Overhead', claims: [] }]
+  };
+  const current = {
+    overall: { status: 'pass', label: 'Ready' },
+    findings: [
+      { id: 'target-region', status: 'pass', value: 42, unit: 'ms', required: true },
+      { id: 'jitter.primary', status: 'info', value: 4, unit: 'ms', required: false },
+      { id: 'client.sign-in', status: 'pass', value: 25, unit: 'ms', required: true }
+    ],
+    caveats: []
+  };
+  const diff = compareResults(baseline, current);
+  assert.ok(diff);
+  assert.equal(diff.rttDeltaMs, -98);
+  assert.equal(diff.jitterDeltaMs, -14);
+  assert.deepEqual(diff.blockedCleared, ['client.sign-in']);
+  assert.deepEqual(diff.newlyBlocked, []);
+  assert.deepEqual(diff.caveatsCleared, ['high-setup-overhead']);
+  assert.deepEqual(diff.caveatsAdded, []);
+});
+
+test('share export and parser preserve cloud, workloads, setupMs, and webClient fields', () => {
+  const packMap = {
+    'avd-gov': { id: 'avd-gov', version: '2026.10', allowedFindingIds: ['gov.sign-in', 'dns.origin'] }
+  };
+  const exported = makeExport({
+    pack: packMap['avd-gov'],
+    cloud: 'gov',
+    workloads: ['avd', 'teams'],
+    createdAt: '2026-10-25T13:14:00Z',
+    webClient: {
+      webCodecs: true,
+      h264: true,
+      av1: false,
+      clipboard: true,
+      multiScreen: false
+    },
+    findings: [
+      { id: 'gov.sign-in', host: 'login.microsoftonline.us', status: 'pass', value: 32, setupMs: 280, unit: 'ms', required: true },
+      { id: 'dns.origin', status: 'info', value: 18, unit: 'ms', required: false }
+    ]
+  });
+  assert.equal(exported.cloud, 'gov');
+  assert.deepEqual(exported.workloads, ['avd', 'teams']);
+  assert.equal(exported.findings[0].setupMs, 280);
+  assert.equal(exported.webClient.h264, true);
+
+  const parsed = parseSharedResult(JSON.stringify(exported), packMap);
+  assert.equal(parsed.cloud, 'gov');
+  assert.deepEqual(parsed.workloads, ['avd', 'teams']);
+  assert.equal(parsed.findings[0].setupMs, 280);
+  assert.equal(parsed.webClient.h264, true);
 });

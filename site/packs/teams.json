@@ -1,0 +1,59 @@
+{
+  "id": "teams",
+  "version": "2026.10",
+  "title": "Microsoft Teams (VDI SlimCore / WebRTC)",
+  "cloud": "commercial",
+  "workload": "teams",
+  "endpointIds": [],
+  "hosts": [
+    {
+      "id": "teams.cloud",
+      "host": "teams.cloud.microsoft",
+      "purpose": "teams-client",
+      "required": true,
+      "port": 443,
+      "claim": "ref:m365-endpoints#teams-front-door"
+    },
+    {
+      "id": "teams.web",
+      "host": "teams.microsoft.com",
+      "purpose": "teams-signaling",
+      "required": true,
+      "port": 443,
+      "claim": "ref:m365-endpoints#teams-front-door"
+    },
+    {
+      "id": "teams.config",
+      "host": "config.teams.microsoft.com",
+      "purpose": "teams-config",
+      "required": false,
+      "port": 443,
+      "claim": "ref:m365-endpoints#teams-config"
+    },
+    {
+      "id": "teams.presence",
+      "host": "presence.teams.microsoft.com",
+      "purpose": "teams-presence",
+      "required": false,
+      "port": 443,
+      "claim": "ref:m365-endpoints#teams-front-door"
+    }
+  ],
+  "notTested": [
+    "teams.media-udp"
+  ],
+  "regionalProbe": false,
+  "thresholds": [],
+  "download": {
+    "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin",
+    "bytes": 8388608,
+    "claim": "ref:rdp-bandwidth#monitor-real-users"
+  },
+  "primaryHostId": "teams.cloud",
+  "stun": [],
+  "limits": "This browser check verifies HTTPS reachability to Teams signaling and configuration front doors. UDP 3478-3481 media relays for SlimCore and WebRTC VDI media optimization cannot be tested from a static web page; verify VDI media optimization status and collect Teams diagnostic logs inside the session.",
+  "links": {
+    "endpoints": "https://learn.microsoft.com/microsoftteams/new-teams-vdi-requirements-deploy",
+    "vdiCheck": "steps/index.html?step=teams.logs.windows"
+  }
+}

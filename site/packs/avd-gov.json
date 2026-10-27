@@ -1,0 +1,100 @@
+{
+  "id": "avd-gov",
+  "version": "2026.10",
+  "title": "Azure Virtual Desktop (US Government)",
+  "cloud": "gov",
+  "workload": "avd",
+  "endpointSource": {
+    "repo": "avd-ops/avd-assess",
+    "path": "endpoints.json",
+    "commit": "d8b6983b6fd947eb795cd5945e30e54cf1dc194b",
+    "sha256": "eb8a1aed7f3c285006c05164825bbfc061c2a3fc94a58f1a68d8c6098f699472"
+  },
+  "endpointIds": [],
+  "hosts": [
+    {
+      "id": "gov.sign-in",
+      "host": "login.microsoftonline.us",
+      "purpose": "sign-in",
+      "required": true,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.graph",
+      "host": "graph.microsoft.us",
+      "purpose": "service",
+      "required": false,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.connection-center",
+      "host": "windows.cloud.microsoft",
+      "purpose": "connection-center",
+      "required": true,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.fwlink",
+      "host": "go.microsoft.com",
+      "purpose": "links-and-docs",
+      "required": false,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.shortener",
+      "host": "aka.ms",
+      "purpose": "links-and-docs",
+      "required": false,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.docs",
+      "host": "learn.microsoft.com",
+      "purpose": "links-and-docs",
+      "required": false,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    },
+    {
+      "id": "gov.privacy",
+      "host": "privacy.microsoft.com",
+      "purpose": "links-and-docs",
+      "required": false,
+      "port": 443,
+      "claim": "ref:avd-gov-required-fqdn#client-list"
+    }
+  ],
+  "notTested": [
+    "gov.wvd",
+    "gov.service",
+    "gov.relay"
+  ],
+  "regionalProbe": true,
+  "thresholds": [
+    { "below": 100, "state": "pass", "claim": "ref:avd-insights-use-cases#rtt-ideal-100-poor-200" },
+    { "below": 150, "state": "warn", "claim": "ref:avd-prerequisites#rtt-under-150" },
+    { "atMost": 200, "state": "warn", "claim": "ref:avd-connection-quality#rtt-bands" },
+    { "otherwise": "fail", "claim": "ref:avd-connection-quality#rtt-bands" }
+  ],
+  "download": {
+    "path": "blobs/8m-90797e9fe7d8748340173a91f94ba8b70c8f46c9991dda411c094260ff72afce.bin",
+    "bytes": 8388608,
+    "claim": "ref:rdp-bandwidth#monitor-real-users"
+  },
+  "primaryHostId": "gov.sign-in",
+  "stun": [],
+  "shortpathNote": {
+    "claim": "ref:configure-rdp-shortpath#turn-public-cloud-only",
+    "sentence": "RDP Shortpath with TURN relay is supported only in Azure Commercial. Azure US Government uses direct STUN Shortpath or falls back to the TCP gateway."
+  },
+  "limits": "Reached means this browser completed DNS, a connection and TLS to that host and got a response. It does not test sign-in, access to a desktop, wildcard *.wvd.azure.us endpoints, UDP, or the session host. RDP Shortpath TURN relay is Commercial-only (ref:configure-rdp-shortpath#turn-public-cloud-only); Azure US Government uses direct STUN Shortpath or TCP gateway.",
+  "links": {
+    "endpoints": "https://learn.microsoft.com/azure/virtual-desktop/required-fqdn-endpoint?tabs=azure-gov",
+    "shortpath": "https://learn.microsoft.com/azure/virtual-desktop/configure-rdp-shortpath"
+  }
+}

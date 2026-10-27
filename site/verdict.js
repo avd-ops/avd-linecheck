@@ -77,13 +77,15 @@
     };
   }
 
-  function reachabilityFinding(target, outcome, value = null) {
+  function reachabilityFinding(target, outcome, value = null, setupMs = null) {
     const status = outcome === 'reached' ? 'pass' : outcome === 'blocked' && target.required === true ? 'blocked' : 'unknown';
+    const roundedSetup = Number.isFinite(setupMs) && setupMs >= 0 ? Math.round(setupMs) : null;
     return {
       id: target.id,
       status,
       value: Number.isFinite(value) ? Math.round(value) : null,
       unit: Number.isFinite(value) ? 'ms' : null,
+      ...(roundedSetup !== null ? { setupMs: roundedSetup } : {}),
       required: target.required === true,
       claim: target.claim !== undefined ? target.claim : null
     };
@@ -117,6 +119,11 @@
       expectedGeo && fastest && fastest.region && fastest.region.geo && fastest.region.geo !== expectedGeo
     );
 
+    const hostSetupTimes = (Array.isArray(hostResults) ? hostResults : [])
+      .map((h) => (h && h.result && Number.isFinite(h.result.setupMs) ? h.result.setupMs : null))
+      .filter((v) => v !== null);
+    const highSetupOverhead = hostSetupTimes.some((v) => v >= 250);
+
     if (uniformHosts) {
       caveats.push({
         id: 'uniform-host-timing',
@@ -133,7 +140,27 @@
         claims: ['ref:rdp-traffic-optimization#local-egress', 'ref:rdp-traffic-optimization#bypass-tunnels']
       });
     }
+    if (highSetupOverhead) {
+      caveats.push({
+        id: 'high-setup-overhead',
+        reasons: ['high-setup-overhead'],
+        sentence: 'First-request connection setup took at least 250 ms longer than warm requests on one or more hosts. A slow DNS resolver or a TLS-inspecting proxy may be adding handshake overhead.',
+        claims: ['ref:avd-proxy#bypass-proxies', 'ref:rdp-traffic-optimization#no-tls-inspection']
+      });
+    }
     return caveats;
+  }
+
+  // Spec 6.1 & 6.3: Azure US Government uses direct STUN Shortpath or TCP gateway; TURN relay is Commercial-only.
+  function cloudShortpathNote(cloud = 'commercial') {
+    if (cloud !== 'gov') return null;
+    return {
+      id: 'gov-shortpath-turn',
+      cloud: 'gov',
+      claim: 'ref:configure-rdp-shortpath#turn-public-cloud-only',
+      claims: ['ref:configure-rdp-shortpath#turn-public-cloud-only'],
+      sentence: 'RDP Shortpath with TURN relay is supported only in Azure Commercial. Azure US Government uses direct STUN Shortpath or falls back to the TCP gateway.'
+    };
   }
 
   // Spec 6.4: relay geography note when the closest TURN-capable region is far (> 150 ms).
@@ -229,6 +256,7 @@
     detectVantage,
     detectCaveats,
     detectProxyCaveats: detectCaveats,
+    cloudShortpathNote,
     relayGeographyNote,
     overallVerdict,
     rankRegions,

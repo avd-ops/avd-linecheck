@@ -16,6 +16,9 @@
     "southafricanorth", "southcentralus", "southeastasia", "uksouth", "ukwest",
     "westcentralus", "westeurope", "westus", "westus2", "westus3"
   ],
+  "avdGovTargetRegionIds": [
+    "usgovvirginia", "usgovarizona", "usgovtexas"
+  ],
   "measurement": {
     "method": "GET",
     "samples": 5,
@@ -24,6 +27,7 @@
     "top": 5
   },
   "hostTemplate": "{region}.api.cognitive.microsoft.com",
+  "govHostTemplate": "{region}.api.cognitive.microsoft.us",
   "regions": [
     { "id": "eastus", "name": "East US", "geo": "Americas" },
     { "id": "eastus2", "name": "East US 2", "geo": "Americas" },
@@ -63,5 +67,10 @@
     { "id": "uaenorth", "name": "UAE North", "geo": "Middle East & Africa" },
     { "id": "qatarcentral", "name": "Qatar Central", "geo": "Middle East & Africa" },
     { "id": "southafricanorth", "name": "South Africa North", "geo": "Middle East & Africa" }
+  ],
+  "govRegions": [
+    { "id": "usgovvirginia", "name": "US Gov Virginia", "geo": "US Government", "cloud": "gov" },
+    { "id": "usgovarizona", "name": "US Gov Arizona", "geo": "US Government", "cloud": "gov" },
+    { "id": "usgovtexas", "name": "US Gov Texas", "geo": "US Government", "cloud": "gov" }
   ]
 }

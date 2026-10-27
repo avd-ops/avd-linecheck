@@ -11,7 +11,7 @@
 
   const SEVERITY = { blocked: 5, fail: 4, unknown: 3, warn: 2, pass: 1, info: 0 };
   const KNOWN_HOST_SUFFIXES = [
-    'microsoft.com', 'microsoftonline.com', 'cloud.microsoft', 'windows.net', 'office.com', 'aka.ms'
+    'microsoft.com', 'microsoftonline.com', 'microsoftonline.us', 'microsoft.us', 'azure.us', 'cloud.microsoft', 'windows.net', 'office.com', 'aka.ms'
   ];
   const SYMPTOM_IDS = [
     'slow-typing',
@@ -54,12 +54,14 @@
     const customHost = hasCustomHosts(pack) && pack.hosts ? pack.hosts.find((host) => host.id === finding.id) : null;
     const claim = typeof finding.claim === 'string' && /^ref:[a-z0-9-]+#[a-z0-9-]+$/.test(finding.claim) ? finding.claim : null;
     const unit = ['ms', 'Mbit/s', 'count'].includes(finding.unit) ? finding.unit : null;
+    const setupMs = Number.isFinite(finding.setupMs) && finding.setupMs >= 0 ? Math.round(finding.setupMs) : null;
     return {
       id: finding.id,
       status,
       required: finding.required === true,
       value: Number.isFinite(finding.value) ? Math.round(finding.value) : null,
       unit,
+      ...(setupMs !== null ? { setupMs } : {}),
       threshold: typeof finding.threshold === 'string' && finding.threshold.length <= 32 ? finding.threshold : null,
       claim,
       ...(customHost ? { host: customHost.host, purpose: customHost.purpose } : {}),
@@ -70,17 +72,19 @@
   const CAVEAT_CLAIMS = {
     'proxy-or-tunnel': ['ref:avd-proxy#bypass-proxies', 'ref:rdp-traffic-optimization#bypass-tunnels'],
     'uniform-host-timing': ['ref:avd-proxy#bypass-proxies', 'ref:rdp-traffic-optimization#bypass-tunnels'],
-    'geography-mismatch': ['ref:rdp-traffic-optimization#local-egress', 'ref:rdp-traffic-optimization#bypass-tunnels']
+    'geography-mismatch': ['ref:rdp-traffic-optimization#local-egress', 'ref:rdp-traffic-optimization#bypass-tunnels'],
+    'high-setup-overhead': ['ref:avd-proxy#bypass-proxies', 'ref:rdp-traffic-optimization#no-tls-inspection']
   };
   const CAVEAT_SENTENCES = {
     'proxy-or-tunnel': 'A proxy, VPN or security agent may be carrying this traffic; the result is about that path.',
     'uniform-host-timing': 'All checked hosts answered within 5 ms of each other. A local proxy, VPN or secure web gateway may be terminating HTTPS close to this browser.',
-    'geography-mismatch': 'The fastest measured region is outside your selected geography. Traffic may be egressing through a remote VPN or tunnel.'
+    'geography-mismatch': 'The fastest measured region is outside your selected geography. Traffic may be egressing through a remote VPN or tunnel.',
+    'high-setup-overhead': 'First-request connection setup took at least 250 ms longer than warm requests on one or more hosts. A slow DNS resolver or a TLS-inspecting proxy may be adding handshake overhead.'
   };
 
   function safeCaveats(caveats) {
     if (!Array.isArray(caveats)) return [];
-    const allowedReasons = new Set(['uniform-host-timing', 'geography-mismatch']);
+    const allowedReasons = new Set(['uniform-host-timing', 'geography-mismatch', 'high-setup-overhead']);
     return caveats
       .filter((c) => c && Object.hasOwn(CAVEAT_CLAIMS, c.id))
       .map((c) => ({
@@ -89,6 +93,26 @@
         sentence: CAVEAT_SENTENCES[c.id],
         claims: CAVEAT_CLAIMS[c.id]
       }));
+  }
+
+  function safeWebClient(input) {
+    if (!input || typeof input !== 'object') return null;
+    if (
+      typeof input.webCodecs !== 'boolean' &&
+      typeof input.h264 !== 'boolean' &&
+      typeof input.av1 !== 'boolean' &&
+      typeof input.clipboard !== 'boolean' &&
+      typeof input.multiScreen !== 'boolean'
+    ) {
+      return null;
+    }
+    return {
+      webCodecs: Boolean(input.webCodecs),
+      h264: Boolean(input.h264),
+      av1: Boolean(input.av1),
+      clipboard: Boolean(input.clipboard),
+      multiScreen: Boolean(input.multiScreen)
+    };
   }
 
   function makeExport(run) {
@@ -113,11 +137,18 @@
     );
     const sentiment = validateSentiment(run.sentiment);
     const caveats = safeCaveats(run.caveats);
+    const cloud = run.cloud === 'gov' || (run.pack && run.pack.cloud === 'gov') ? 'gov' : 'commercial';
+    const workloads = Array.isArray(run.workloads)
+      ? [...new Set(run.workloads.filter((w) => ['avd', 'w365', 'teams', 'm365'].includes(w)))]
+      : [];
+    const webClient = safeWebClient(run.webClient);
 
     return {
       schemaVersion: 1,
       toolVersion: '0.1.0',
       pack: { id: run.pack.id, version: run.pack.version },
+      cloud,
+      ...(workloads.length ? { workloads } : {}),
       custom: hasCustomHosts(run.pack),
       createdAt: `${date.toISOString().slice(0, 16)}Z`,
       browser: { family, major },
@@ -125,6 +156,7 @@
       region,
       regionScope: run.fullRegions ? 'all-measured' : 'top-three',
       vantage,
+      ...(webClient ? { webClient } : {}),
       ...(sentiment ? { sentiment } : {}),
       ...(caveats.length ? { caveats } : {}),
       overall,
@@ -191,14 +223,23 @@
     };
   }
 
-  function parseSharedResult(text, pack) {
+  function parseSharedResult(text, packOrMap) {
     let value;
     try {
       value = JSON.parse(text);
     } catch {
       throw new TypeError('Result is not valid JSON');
     }
-    if (!value || value.schemaVersion !== 1 || !value.pack || value.pack.id !== pack.id || !Array.isArray(value.findings)) {
+    if (!value || value.schemaVersion !== 1 || !value.pack || !Array.isArray(value.findings)) {
+      throw new TypeError('Result format or pack is not supported');
+    }
+    let pack = null;
+    if (packOrMap && typeof packOrMap.id === 'string') {
+      if (value.pack.id === packOrMap.id) pack = packOrMap;
+    } else if (packOrMap && typeof packOrMap === 'object') {
+      pack = packOrMap[value.pack.id] || null;
+    }
+    if (!pack) {
       throw new TypeError('Result format or pack is not supported');
     }
     const allowedIds = new Set(pack.allowedFindingIds || pack.endpointIds || []);
@@ -206,15 +247,78 @@
     const vantage = ['device', 'likely-session-host', 'unknown'].includes(value.vantage) ? value.vantage : 'unknown';
     const sentiment = validateSentiment(value.sentiment);
     const caveats = safeCaveats(value.caveats);
+    const cloud = value.cloud === 'gov' || pack.cloud === 'gov' ? 'gov' : 'commercial';
+    const workloads = Array.isArray(value.workloads)
+      ? [...new Set(value.workloads.filter((w) => ['avd', 'w365', 'teams', 'm365'].includes(w)))]
+      : [];
+    const webClient = safeWebClient(value.webClient);
     return {
       pack: { id: pack.id, version: pack.version },
+      cloud,
+      ...(workloads.length ? { workloads } : {}),
       custom: hasCustomHosts(pack),
       sentencesAvailable: value.pack.version === pack.version,
       vantage,
+      ...(webClient ? { webClient } : {}),
       ...(sentiment ? { sentiment } : {}),
       ...(caveats.length ? { caveats } : {}),
       overall: verdict.overallVerdict(findings, { vantage: vantage === 'likely-session-host' ? 'likely-session-host' : 'device' }),
       findings
+    };
+  }
+
+  function compareResults(baseline, current) {
+    if (!baseline || !current || !Array.isArray(baseline.findings) || !Array.isArray(current.findings)) {
+      throw new TypeError('Both baseline and current results are required for comparison');
+    }
+    const findMetric = (res, id) => {
+      const f = res.findings.find((item) => item && item.id === id && Number.isFinite(item.value));
+      return f ? f.value : null;
+    };
+    const fastestRegionRtt = (res) => {
+      const reg = res.findings.filter((item) => item && item.id.startsWith('region.') && Number.isFinite(item.value));
+      if (!reg.length) return null;
+      return Math.min(...reg.map((item) => item.value));
+    };
+    const baseRtt = findMetric(baseline, 'target-region') ?? fastestRegionRtt(baseline);
+    const currRtt = findMetric(current, 'target-region') ?? fastestRegionRtt(current);
+    const rttDeltaMs = baseRtt !== null && currRtt !== null ? Math.round(currRtt - baseRtt) : null;
+
+    const baseJitter = findMetric(baseline, 'jitter.primary');
+    const currJitter = findMetric(current, 'jitter.primary');
+    const jitterDeltaMs = baseJitter !== null && currJitter !== null ? Math.round(currJitter - baseJitter) : null;
+
+    const baseById = new Map(baseline.findings.map((f) => [f.id, f]));
+    const currById = new Map(current.findings.map((f) => [f.id, f]));
+    const blockedCleared = [];
+    const newlyBlocked = [];
+    for (const [id, bf] of baseById.entries()) {
+      const cf = currById.get(id);
+      if (bf.status === 'blocked' && cf && cf.status === 'pass') blockedCleared.push(id);
+    }
+    for (const [id, cf] of currById.entries()) {
+      const bf = baseById.get(id);
+      if (cf.status === 'blocked' && (!bf || bf.status !== 'blocked')) newlyBlocked.push(id);
+    }
+
+    const baseCaveats = new Set((baseline.caveats || []).map((c) => c.id));
+    const currCaveats = new Set((current.caveats || []).map((c) => c.id));
+    const caveatsCleared = [...baseCaveats].filter((id) => !currCaveats.has(id));
+    const caveatsAdded = [...currCaveats].filter((id) => !baseCaveats.has(id));
+
+    return {
+      overallBefore: baseline.overall ? baseline.overall.status : 'unknown',
+      overallAfter: current.overall ? current.overall.status : 'unknown',
+      baseRttMs: baseRtt,
+      currRttMs: currRtt,
+      rttDeltaMs,
+      baseJitterMs: baseJitter,
+      currJitterMs: currJitter,
+      jitterDeltaMs,
+      blockedCleared,
+      newlyBlocked,
+      caveatsCleared,
+      caveatsAdded
     };
   }
 
@@ -223,8 +327,10 @@
     SYMPTOM_LABELS,
     hasCustomHosts,
     validateSentiment,
+    safeWebClient,
     makeExport,
     makeIntakeEntry,
-    parseSharedResult
+    parseSharedResult,
+    compareResults
   };
 });
