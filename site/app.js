@@ -453,6 +453,21 @@
     $('download-intake').addEventListener('click', downloadIntake);
     $('read-result').addEventListener('click', readSharedResult);
     $('keep-baseline').addEventListener('click', keepAsBaseline);
+    if ($('toggle-metrics')) {
+      $('toggle-metrics').addEventListener('click', () => {
+        const panel = $('connection-metrics');
+        if (!panel) return;
+        const willShow = panel.hidden;
+        panel.hidden = !willShow;
+        $('toggle-metrics').setAttribute('aria-expanded', String(willShow));
+        $('toggle-metrics').textContent = willShow
+          ? 'Hide connection details & metrics'
+          : 'Show connection details & metrics';
+      });
+    }
+    if ($('copy-metrics')) {
+      $('copy-metrics').addEventListener('click', copyMetrics);
+    }
     $('run-compare').addEventListener('click', runCompare);
     $('clear-baseline').addEventListener('click', clearBaseline);
     $('full-regions').addEventListener('change', () => {
@@ -720,6 +735,7 @@
     findings.push(addInfo('stalls.primary', jitter.status === 'reached' ? jitter.stalls : null, 'count'));
 
     const primary = targets[0];
+    let downloadDetail = null;
     if (lite) {
       notTested.push('download', 'loaded-latency');
     } else {
@@ -740,6 +756,7 @@
       loadedController.abort();
       const loaded = await loadedPromise;
       const loadedLatency = download.loadedLatencyEligible ? engine.median(loaded.samples) : null;
+      downloadDetail = { ...download, loadedLatency };
       if (download.status !== 'measured') notTested.push('download', 'loaded-latency');
       else if (!Number.isFinite(loadedLatency)) notTested.push('loaded-latency');
       const dlSentence = download.status === 'measured'
@@ -784,6 +801,11 @@
       sentiment: readSentiment(),
       findings,
       notTested,
+      hostResults,
+      jitterDetail: jitter,
+      downloadDetail,
+      dnsOriginMs,
+      lite,
       regionResults,
       targetRegionDetail: phased.targetRegionResult,
       fullRegions: false
@@ -873,12 +895,98 @@
       teamsNoteEl.hidden = !run.hasTeams && run.pack.id !== 'teams';
     }
 
+    renderConnectionMetrics(run);
     renderFindings(run.findings.filter((finding) => !finding.id.startsWith('region.')));
     renderWebClientReadiness(run.webClient);
     renderNotTested(run.notTested);
     renderRegionRanking(run);
     runState.textContent = statusMessage;
     renderSteps();
+  }
+
+  function renderConnectionMetrics(run) {
+    const panel = $('connection-metrics');
+    if (!panel || typeof verdict.summarizeMetrics !== 'function') return;
+    const summary = verdict.summarizeMetrics(run);
+    panel.hidden = false;
+    if ($('toggle-metrics')) {
+      $('toggle-metrics').setAttribute('aria-expanded', 'true');
+      $('toggle-metrics').textContent = 'Hide connection details & metrics';
+    }
+    const cardsEl = $('metric-cards');
+    if (cardsEl) {
+      cardsEl.replaceChildren(...summary.cards.map((card) => {
+        const box = el('div', { className: 'metric-card', role: 'listitem' });
+        box.dataset.status = card.status;
+        box.append(
+          el('p', { className: 'metric-label', textContent: card.label }),
+          el('p', { className: 'metric-val', textContent: card.value }),
+          el('p', { className: 'metric-sub', textContent: card.detail })
+        );
+        return box;
+      }));
+    }
+    const detailsBody = $('connection-details-rows');
+    if (detailsBody) {
+      detailsBody.replaceChildren(...summary.connectionDetails.map((item) => {
+        const tr = document.createElement('tr');
+        const th = el('th', { textContent: item.label });
+        th.setAttribute('scope', 'row');
+        const td = el('td', { textContent: item.value });
+        tr.append(th, td);
+        return tr;
+      }));
+    }
+    const epBody = $('endpoint-metrics-rows');
+    if (epBody) {
+      epBody.replaceChildren(...summary.endpoints.map((ep) => {
+        const tr = document.createElement('tr');
+        const hostCell = document.createElement('td');
+        hostCell.append(
+          el('code', { textContent: ep.host }),
+          document.createTextNode(ep.purpose && ep.purpose !== ep.host ? ` (${ep.purpose})` : '')
+        );
+        const roleCell = el('td', { textContent: ep.required ? 'Required' : 'Informational' });
+        const statusCell = document.createElement('td');
+        statusCell.append(el('strong', {
+          className: `outcome o-${ep.status}`,
+          textContent: statusNames[ep.status] ?? ep.status
+        }));
+        const warmUpCell = el('td', { textContent: ep.warmUpMs !== null ? `${ep.warmUpMs} ms` : 'n/a' });
+        const medianCell = el('td', { textContent: ep.medianMs !== null ? `at most ${ep.medianMs} ms` : 'No answer' });
+        const setupCell = el('td', { textContent: ep.setupMs !== null ? `+${ep.setupMs} ms` : 'n/a' });
+        const samplesCell = el('td', { textContent: `${ep.sampleCount} ok / ${ep.stalls} stalls${ep.slowSamples ? ` / ${ep.slowSamples} slow` : ''}` });
+        tr.append(hostCell, roleCell, statusCell, warmUpCell, medianCell, setupCell, samplesCell);
+        return tr;
+      }));
+    }
+  }
+
+  function metricsText(run = lastRun) {
+    if (!run || typeof verdict.summarizeMetrics !== 'function') return '';
+    const summary = verdict.summarizeMetrics(run);
+    const lines = [
+      '=== Performance Metrics ===',
+      ...summary.cards.map((c) => `${c.label}: ${c.value} (${c.detail})`),
+      '',
+      '=== Connection & Environment Details ===',
+      ...summary.connectionDetails.map((d) => `${d.label}: ${d.value}`),
+      '',
+      '=== Per-Endpoint Performance Breakdown ===',
+      ...summary.endpoints.map((ep) => `${ep.host} [${ep.required ? 'Required' : 'Info'}]: ${statusNames[ep.status] ?? ep.status} | cold=${ep.warmUpMs !== null ? `${ep.warmUpMs}ms` : 'n/a'} | warm=${ep.medianMs !== null ? `<=${ep.medianMs}ms` : 'n/a'} | setup=${ep.setupMs !== null ? `+${ep.setupMs}ms` : 'n/a'} | samples=${ep.sampleCount} ok, ${ep.stalls} stalls`)
+    ];
+    return lines.join('\n');
+  }
+
+  async function copyMetrics() {
+    if (!lastRun) return;
+    const text = metricsText(lastRun);
+    try {
+      await navigator.clipboard.writeText(text);
+      if ($('baseline-state')) $('baseline-state').textContent = 'Copied connection details & performance metrics to clipboard.';
+    } catch {
+      if ($('baseline-state')) $('baseline-state').textContent = 'Could not copy automatically. Use Share in Step 4.';
+    }
   }
 
   function renderWebClientReadiness(webClient) {
