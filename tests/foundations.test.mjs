@@ -52,12 +52,23 @@ test('every relative Markdown link resolves', () => {
 });
 
 test('no GUIDs or email addresses', () => {
-  const guid = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
+  const guid = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
   const email = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  // Well-known Microsoft public app and built-in role IDs in the vendored portal engine's redact.js.
+  const publicIds = new Set([
+    '00000000-0000-0000-0000-000000000000',
+    '00000003-0000-0000-c000-000000000000',
+    '9cdead84-a844-4324-93f2-b2e6bb768d07',
+    'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+  ]);
   for (const p of textFiles) {
     const body = readFileSync(p, 'utf8');
-    assert.doesNotMatch(body, guid, `${p.slice(root.length + 1)} holds a GUID`);
-    assert.doesNotMatch(body, email, `${p.slice(root.length + 1)} holds an email address`);
+    const rel = p.slice(root.length + 1).replace(/\\/g, '/');
+    for (const [hit] of body.matchAll(guid)) {
+      if ((rel === 'site/assets/engine/redact.js' || rel === 'tests/foundations.test.mjs') && publicIds.has(hit.toLowerCase())) continue;
+      assert.fail(`${rel} holds a GUID (${hit})`);
+    }
+    assert.doesNotMatch(body, email, `${rel} holds an email address`);
   }
 });
 
