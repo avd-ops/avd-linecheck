@@ -10,7 +10,7 @@ const exporter = require('../site/export.js');
 const {
   findingSentence, rttFinding, overallVerdict, reachabilityFinding,
   rankRegions, regionRating, visibleRegions, detectVantage,
-  detectProxyCaveats, relayGeographyNote, cloudShortpathNote, sentences, labels
+  detectProxyCaveats, relayGeographyNote, cloudShortpathNote, summarizeMetrics, sentences, labels
 } = verdict;
 const { hasCustomHosts, makeExport, makeIntakeEntry, parseSharedResult, compareResults, validateSentiment } = exporter;
 
@@ -288,4 +288,52 @@ test('share export and parser preserve cloud, workloads, setupMs, and webClient 
   assert.deepEqual(parsed.workloads, ['avd', 'teams']);
   assert.equal(parsed.findings[0].setupMs, 280);
   assert.equal(parsed.webClient.h264, true);
+});
+
+test('summarizeMetrics builds performance cards, connection details, and per-endpoint breakdown', () => {
+  const summary = summarizeMetrics({
+    pack: { id: 'avd', title: 'Azure Virtual Desktop', version: '2026.10' },
+    cloud: 'commercial',
+    workloads: ['avd', 'teams'],
+    region: 'eastus',
+    vantage: 'device',
+    browser: { family: 'Edge', major: 157 },
+    platform: 'desktop',
+    caveats: [{ id: 'high-setup-overhead' }],
+    dnsOriginMs: 14,
+    lite: false,
+    jitterDetail: { status: 'reached', jitter: 4, jitterFloor: false, stalls: 0, slowSamples: 1 },
+    downloadDetail: { status: 'measured', reportedMbps: 67, capped: true, elapsed: 420 },
+    regionResults: [
+      { region: { id: 'eastus', name: 'East US', geo: 'Americas' }, result: { status: 'reached', median: 28 } }
+    ],
+    hostResults: [
+      {
+        target: { id: 'client.sign-in', host: 'login.microsoftonline.com', purpose: 'Microsoft Entra sign-in', required: true },
+        result: { status: 'reached', warmUpMs: 310, median: 30, setupMs: 280, samples: [28, 30, 32], stalls: 0, slowSamples: 0 }
+      }
+    ],
+    findings: [
+      { id: 'target-region', status: 'pass', value: 28, unit: 'ms', required: true },
+      { id: 'loaded-latency', status: 'info', value: 36, unit: 'ms', required: false }
+    ]
+  });
+
+  assert.equal(summary.cards.length, 6);
+  assert.equal(summary.cards.find((c) => c.id === 'rtt').value, 'at most 28 ms');
+  assert.equal(summary.cards.find((c) => c.id === 'jitter').value, '4 ms');
+  assert.equal(summary.cards.find((c) => c.id === 'stability').value, '0 stalls / 1 slow');
+  assert.equal(summary.cards.find((c) => c.id === 'setup').value, '+280 ms max');
+  assert.equal(summary.cards.find((c) => c.id === 'download').value, 'at least 67 Mbit/s');
+  assert.equal(summary.cards.find((c) => c.id === 'loaded-dns').value, 'at most 36 ms / 14 ms DNS');
+
+  assert.equal(summary.connectionDetails.length, 7);
+  assert.equal(summary.connectionDetails[0].value, 'Azure Commercial');
+  assert.match(summary.connectionDetails[1].value, /Workloads: avd, teams/);
+
+  assert.equal(summary.endpoints.length, 1);
+  assert.equal(summary.endpoints[0].host, 'login.microsoftonline.com');
+  assert.equal(summary.endpoints[0].warmUpMs, 310);
+  assert.equal(summary.endpoints[0].medianMs, 30);
+  assert.equal(summary.endpoints[0].setupMs, 280);
 });

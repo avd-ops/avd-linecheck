@@ -245,6 +245,206 @@
     return SENTENCES[status] || SENTENCES.unknown;
   }
 
+  function summarizeMetrics(run = {}) {
+    const findings = Array.isArray(run.findings) ? run.findings : [];
+    const byId = new Map(findings.filter((f) => f && f.id).map((f) => [f.id, f]));
+    const regionResults = Array.isArray(run.regionResults) ? run.regionResults : [];
+    const ranked = rankRegions(regionResults);
+    const fastestRegion = ranked.find((r) => r && r.result && r.result.status === 'reached' && Number.isFinite(r.result.median));
+    const targetRegionEntry = run.region ? regionResults.find((r) => r && r.region && r.region.id === run.region) : null;
+    const targetFinding = byId.get('target-region');
+    const primaryRegionEntry = targetRegionEntry || fastestRegion || null;
+    const rttMs = targetFinding && Number.isFinite(targetFinding.value)
+      ? Math.round(targetFinding.value)
+      : primaryRegionEntry && primaryRegionEntry.result && Number.isFinite(primaryRegionEntry.result.median)
+        ? Math.round(primaryRegionEntry.result.median)
+        : null;
+    const rttRegionLabel = targetRegionEntry && targetRegionEntry.region
+      ? `${targetRegionEntry.region.name} (${targetRegionEntry.region.id})`
+      : fastestRegion && fastestRegion.region
+        ? `Fastest: ${fastestRegion.region.name} (${fastestRegion.region.id})`
+        : run.region || 'No region measured';
+
+    const jitterFinding = byId.get('jitter.primary');
+    const jitterMs = run.jitterDetail && Number.isFinite(run.jitterDetail.jitter)
+      ? Math.round(run.jitterDetail.jitter)
+      : jitterFinding && Number.isFinite(jitterFinding.value)
+        ? Math.round(jitterFinding.value)
+        : null;
+    const jitterFloor = Boolean(run.jitterDetail && run.jitterDetail.jitterFloor) || (jitterMs !== null && jitterMs < 2);
+
+    const stallsFinding = byId.get('stalls.primary');
+    const slowFinding = byId.get('slow-samples');
+    const stalls = run.jitterDetail && Number.isFinite(run.jitterDetail.stalls)
+      ? run.jitterDetail.stalls
+      : stallsFinding && Number.isFinite(stallsFinding.value)
+        ? stallsFinding.value
+        : null;
+    const slowSamples = run.jitterDetail && Number.isFinite(run.jitterDetail.slowSamples)
+      ? run.jitterDetail.slowSamples
+      : slowFinding && Number.isFinite(slowFinding.value)
+        ? slowFinding.value
+        : null;
+
+    const setupFinding = byId.get('setup.max');
+    const hostResults = Array.isArray(run.hostResults) ? run.hostResults : [];
+    const hostSetupValues = hostResults
+      .map((h) => (h && h.result && Number.isFinite(h.result.setupMs) ? Math.round(h.result.setupMs) : null))
+      .filter((v) => v !== null);
+    const maxSetupMs = hostSetupValues.length
+      ? Math.max(...hostSetupValues)
+      : setupFinding && Number.isFinite(setupFinding.value)
+        ? Math.round(setupFinding.value)
+        : null;
+
+    const dlFinding = byId.get('download');
+    const dlDetail = run.downloadDetail || null;
+    const dlMbps = dlDetail && Number.isFinite(dlDetail.reportedMbps)
+      ? dlDetail.reportedMbps
+      : dlFinding && Number.isFinite(dlFinding.value)
+        ? dlFinding.value
+        : null;
+    const dlCapped = dlDetail ? Boolean(dlDetail.capped) : (dlMbps !== null && dlMbps >= 67);
+
+    const loadedFinding = byId.get('loaded-latency');
+    const loadedMs = loadedFinding && Number.isFinite(loadedFinding.value)
+      ? Math.round(loadedFinding.value)
+      : null;
+    const dnsFinding = byId.get('dns.origin');
+    const dnsMs = Number.isFinite(run.dnsOriginMs)
+      ? Math.round(run.dnsOriginMs)
+      : dnsFinding && Number.isFinite(dnsFinding.value)
+        ? Math.round(dnsFinding.value)
+        : null;
+
+    const cards = [
+      {
+        id: 'rtt',
+        label: targetRegionEntry || (targetFinding && run.region) ? 'Target region RTT' : 'Nearest region RTT',
+        value: rttMs !== null ? `at most ${rttMs} ms` : 'No answer',
+        detail: rttMs !== null ? `${rttRegionLabel} - ${regionRating(rttMs)}` : rttRegionLabel,
+        status: targetFinding ? targetFinding.status : (rttMs !== null ? (rttMs < 100 ? 'pass' : rttMs <= 200 ? 'warn' : 'fail') : 'unknown')
+      },
+      {
+        id: 'jitter',
+        label: 'Serial jitter',
+        value: jitterMs !== null ? (jitterFloor ? 'Under 2 ms' : `${jitterMs} ms`) : 'Not measured',
+        detail: jitterMs !== null ? '8 serial HTTPS samples to primary host' : 'Primary host did not answer',
+        status: jitterMs !== null ? 'info' : 'unknown'
+      },
+      {
+        id: 'stability',
+        label: 'Sample stability',
+        value: stalls !== null ? `${stalls} stalls / ${slowSamples ?? 0} slow` : 'Not measured',
+        detail: 'Timed-out requests and samples > 3x median',
+        status: stalls === 0 ? 'pass' : stalls !== null && stalls > 0 ? 'warn' : 'unknown'
+      },
+      {
+        id: 'setup',
+        label: 'Cold setup overhead',
+        value: maxSetupMs !== null ? `+${maxSetupMs} ms max` : 'Not measured',
+        detail: maxSetupMs !== null && maxSetupMs >= 250
+          ? 'High first-request overhead (>= 250 ms; possible TLS proxy or slow DNS)'
+          : 'Warm-up minus warm median (DNS, TCP, TLS)',
+        status: maxSetupMs !== null ? (maxSetupMs >= 250 ? 'warn' : 'info') : 'unknown'
+      },
+      {
+        id: 'download',
+        label: 'Download sufficiency',
+        value: run.lite
+          ? 'Skipped (Lite)'
+          : dlMbps !== null
+            ? (dlCapped ? `at least ${dlMbps} Mbit/s` : `${Math.round(dlMbps)} Mbit/s`)
+            : 'Not measured',
+        detail: run.lite
+          ? '8 MiB transfer skipped by Lite mode'
+          : dlDetail && Number.isFinite(dlDetail.elapsed) && dlDetail.elapsed > 0
+            ? `8 MiB HTTPS transfer in ${dlDetail.elapsed} ms`
+            : '8 MiB same-origin HTTPS transfer',
+        status: dlMbps !== null ? 'info' : 'unknown'
+      },
+      {
+        id: 'loaded-dns',
+        label: 'Loaded RTT & origin DNS',
+        value: `${loadedMs !== null ? `at most ${loadedMs} ms` : 'n/a'} / ${dnsMs !== null ? `${dnsMs} ms DNS` : 'cached DNS'}`,
+        detail: 'Latency during download & same-origin DNS lookup',
+        status: loadedMs !== null || dnsMs !== null ? 'info' : 'unknown'
+      }
+    ];
+
+    const cloudLabel = run.cloud === 'gov' || (run.pack && run.pack.cloud === 'gov')
+      ? 'Azure US Government'
+      : 'Azure Commercial';
+    const packTitle = run.pack ? `${run.pack.title || run.pack.id} (${run.pack.version || '1.0'})` : 'Azure Virtual Desktop';
+    const workloadsText = Array.isArray(run.workloads) && run.workloads.length
+      ? ` - Workloads: ${run.workloads.join(', ')}`
+      : '';
+    const vantageLabel = run.vantage === 'likely-session-host'
+      ? 'Likely inside a remote session (< 5 ms regional RTT)'
+      : run.vantage === 'device'
+        ? 'Client device (outside Azure datacenter)'
+        : 'Unknown vantage';
+    const browserLabel = run.browser && run.browser.family
+      ? `${run.browser.family}${run.browser.major ? ` ${run.browser.major}` : ''} (${run.platform || 'unknown'})`
+      : (run.platform || 'Unknown');
+    const caveats = Array.isArray(run.caveats) ? run.caveats : [];
+    const caveatSummary = caveats.length
+      ? caveats.map((c) => c.id).join(', ')
+      : 'None triggered';
+    const transportScope = cloudLabel === 'Azure US Government'
+      ? 'Browser probes HTTPS/TCP 443; Azure US Government uses direct STUN Shortpath or TCP gateway (TURN relay is Commercial-only).'
+      : 'Browser probes HTTPS/TCP 443; RDP Shortpath (UDP 3478 STUN/TURN) and Teams media relays (UDP 3478-3481) require the native client.';
+
+    const connectionDetails = [
+      { label: 'Cloud environment', value: cloudLabel },
+      { label: 'Active pack & workloads', value: `${packTitle}${workloadsText}` },
+      { label: 'Target / nearest region', value: rttMs !== null ? `${rttRegionLabel} (at most ${rttMs} ms, ${regionRating(rttMs)})` : rttRegionLabel },
+      { label: 'Detected vantage', value: vantageLabel },
+      { label: 'Client browser & platform', value: browserLabel },
+      { label: 'Transport & Shortpath scope', value: transportScope },
+      { label: 'Proxy / tunnel caveats', value: caveatSummary }
+    ];
+
+    const endpoints = hostResults.length
+      ? hostResults.map(({ target, result }) => ({
+          id: target.id,
+          host: target.host,
+          purpose: target.purpose || target.id,
+          required: Boolean(target.required),
+          status: result.status === 'reached' ? 'pass' : (target.required ? 'blocked' : 'unknown'),
+          warmUpMs: Number.isFinite(result.warmUpMs) ? Math.round(result.warmUpMs) : null,
+          medianMs: Number.isFinite(result.median) ? Math.round(result.median) : null,
+          setupMs: Number.isFinite(result.setupMs) ? Math.round(result.setupMs) : null,
+          sampleCount: Array.isArray(result.samples) ? result.samples.length : 0,
+          stalls: Number.isFinite(result.stalls) ? result.stalls : 0,
+          slowSamples: Number.isFinite(result.slowSamples) ? result.slowSamples : 0
+        }))
+      : findings
+          .filter((f) => f && f.id && !f.id.startsWith('region.') && ![
+            'target-region', 'jitter.primary', 'slow-samples', 'stalls.primary',
+            'download', 'loaded-latency', 'dns.origin', 'setup.max'
+          ].includes(f.id))
+          .map((f) => ({
+            id: f.id,
+            host: f.host || f.id,
+            purpose: f.id,
+            required: Boolean(f.required),
+            status: f.status,
+            warmUpMs: Number.isFinite(f.value) && Number.isFinite(f.setupMs) ? Math.round(f.value + f.setupMs) : null,
+            medianMs: Number.isFinite(f.value) ? Math.round(f.value) : null,
+            setupMs: Number.isFinite(f.setupMs) ? Math.round(f.setupMs) : null,
+            sampleCount: Number.isFinite(f.value) ? 8 : 0,
+            stalls: 0,
+            slowSamples: 0
+          }));
+
+    return {
+      cards,
+      connectionDetails,
+      endpoints
+    };
+  }
+
   return {
     ORDER,
     LABELS,
@@ -262,6 +462,7 @@
     rankRegions,
     visibleRegions,
     regionRating,
-    findingSentence
+    findingSentence,
+    summarizeMetrics
   };
 });

@@ -68,6 +68,16 @@ html{scroll-padding-top:calc(var(--bar) + env(safe-area-inset-top,0px) + 16px);s
 #show-regions{margin-top:var(--space-2)}
 progress{width:100%;height:8px;margin-top:var(--space-3);accent-color:var(--accent)}
 .capture-box,.comments-box{padding:var(--space-4);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(13.5rem,1fr));gap:var(--space-3)}
+.metric-card{padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--sunken)}
+.metric-card[data-status="pass"]{border-left:3px solid var(--good)}
+.metric-card[data-status="warn"],.metric-card[data-status="blocked"]{border-left:3px solid var(--caution)}
+.metric-card[data-status="fail"]{border-left:3px solid var(--bad)}
+.metric-card[data-status="info"]{border-left:3px solid var(--info)}
+.metric-label{font-size:.82rem;color:var(--muted);margin:0}
+.metric-val{font:700 1.15rem var(--mono);color:var(--fg);margin:var(--space-1) 0}
+.metric-sub{font-size:.82rem;color:var(--muted);margin:0}
+#connection-metrics h4{margin:var(--space-4) 0 var(--space-2);font-family:var(--display);font-size:1rem}
 .capture-preview{margin-top:var(--space-3)}
 .capture-preview img,.capture-preview video{display:block;max-width:100%;max-height:20rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--sunken)}
 .step-guide{margin-block:var(--space-4)}

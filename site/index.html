@@ -155,8 +155,19 @@
         <p id="teams-vdi-note" class="relay-note" hidden>UDP 3478-3481 media relays for Teams VDI SlimCore and WebRTC cannot be tested from a static web page. <a href="steps/index.html?step=teams.vdi-optimization">Check Teams VDI optimization</a> &middot; <a href="steps/index.html?step=teams.logs.windows">Collect Teams support logs</a></p>
       </div>
       <div class="actions">
+        <button type="button" class="secondary" id="toggle-metrics" aria-expanded="true" aria-controls="connection-metrics">Hide connection details &amp; metrics</button>
+        <button type="button" class="secondary" id="copy-metrics">Copy connection &amp; performance metrics</button>
         <button type="button" class="secondary" id="keep-baseline">Keep as baseline for comparison</button>
         <span id="baseline-state" class="muted" role="status" aria-live="polite"></span>
+      </div>
+      <div id="connection-metrics" class="capture-box gap" role="region" aria-labelledby="metrics-title" hidden>
+        <h3 id="metrics-title">Connection details &amp; performance metrics</h3>
+        <p class="muted">Summary of measured round-trip latency, serial jitter, cold handshake setup, throughput, and browser environment from this run.</p>
+        <div id="metric-cards" class="metric-grid gap" role="list" aria-label="Performance metrics summary"></div>
+        <h4 class="gap">Connection &amp; environment details</h4>
+        <div class="table-wrap"><table class="kv" aria-label="Connection details"><tbody id="connection-details-rows"></tbody></table></div>
+        <h4 class="gap">Per-endpoint performance breakdown</h4>
+        <div class="table-wrap tbl"><table aria-label="Per-endpoint performance metrics"><thead><tr><th scope="col">Endpoint</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Cold setup</th><th scope="col">Warm median</th><th scope="col">Setup overhead</th><th scope="col">Samples / stalls</th></tr></thead><tbody id="endpoint-metrics-rows"></tbody></table></div>
       </div>
       <ul id="finding-list" class="finding-list"></ul>
       <div id="webclient-readiness" class="capture-box gap" hidden aria-labelledby="webclient-title">
