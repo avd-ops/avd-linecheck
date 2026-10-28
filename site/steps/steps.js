@@ -61,6 +61,153 @@
     return `These steps were last checked against the vendor documentation on ${date}. If the screen in front of you looks different, follow the linked vendor page.`;
   }
 
+  function describeMarginCallouts(asset = {}) {
+    const pad = 44;
+    const innerWidth = Math.max(120, Number(asset.width) || 640);
+    const innerHeight = Math.max(80, Number(asset.height) || 360);
+    const totalWidth = innerWidth + pad * 2;
+    const totalHeight = innerHeight + pad * 2;
+    const callouts = Array.isArray(asset.callouts) ? asset.callouts : [];
+
+    const markers = callouts.map((c, idx) => {
+      const number = Number(c.number) || idx + 1;
+      const side = ['top', 'right', 'bottom', 'left'].includes(c.side) ? c.side : 'left';
+      const ratio = Math.max(0.08, Math.min(0.92, Number.isFinite(Number(c.offset)) ? Number(c.offset) : (idx + 1) / (callouts.length + 1)));
+      let cx = Math.round(pad / 2);
+      let cy = Math.round(pad + innerHeight * ratio);
+      let edgeX = pad;
+      let edgeY = cy;
+
+      if (side === 'right') {
+        cx = Math.round(pad + innerWidth + pad / 2);
+        cy = Math.round(pad + innerHeight * ratio);
+        edgeX = pad + innerWidth;
+        edgeY = cy;
+      } else if (side === 'top') {
+        cx = Math.round(pad + innerWidth * ratio);
+        cy = Math.round(pad / 2);
+        edgeX = cx;
+        edgeY = pad;
+      } else if (side === 'bottom') {
+        cx = Math.round(pad + innerWidth * ratio);
+        cy = Math.round(pad + innerHeight + pad / 2);
+        edgeX = cx;
+        edgeY = pad + innerHeight;
+      }
+
+      return {
+        number,
+        side,
+        cx,
+        cy,
+        edgeX,
+        edgeY,
+        label: String(c.label || `Step ${number}`)
+      };
+    });
+
+    return {
+      pad,
+      innerX: pad,
+      innerY: pad,
+      innerWidth,
+      innerHeight,
+      totalWidth,
+      totalHeight,
+      markers
+    };
+  }
+
+  function buildStepAssetFigure(asset, doc) {
+    const d = doc || (typeof document !== 'undefined' ? document : null);
+    if (!d) return null;
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const layout = describeMarginCallouts(asset);
+
+    const figure = d.createElement('figure');
+    figure.className = 'step-figure';
+    if (asset.theme) figure.dataset.theme = asset.theme;
+
+    const stage = d.createElement('div');
+    stage.className = 'step-margin-stage';
+
+    if (asset.src) {
+      const img = d.createElement('img');
+      img.className = 'step-still';
+      img.loading = 'lazy';
+      img.src = asset.src;
+      img.alt = asset.alt || '';
+      img.width = layout.innerWidth;
+      img.height = layout.innerHeight;
+      stage.appendChild(img);
+    }
+
+    const svg = d.createElementNS(svgNs, 'svg');
+    svg.setAttribute('class', 'step-margin-svg');
+    svg.setAttribute('viewBox', `0 0 ${layout.totalWidth} ${layout.totalHeight}`);
+    svg.setAttribute('role', 'img');
+    const summaryLabel = layout.markers.length
+      ? layout.markers.map((m) => `${m.number}: ${m.label}`).join('; ')
+      : (asset.alt || 'Step margin callouts');
+    svg.setAttribute('aria-label', summaryLabel);
+
+    const title = d.createElementNS(svgNs, 'title');
+    title.textContent = summaryLabel;
+    svg.appendChild(title);
+
+    const frame = d.createElementNS(svgNs, 'rect');
+    frame.setAttribute('class', 'step-inner-frame');
+    frame.setAttribute('x', String(layout.innerX));
+    frame.setAttribute('y', String(layout.innerY));
+    frame.setAttribute('width', String(layout.innerWidth));
+    frame.setAttribute('height', String(layout.innerHeight));
+    svg.appendChild(frame);
+
+    for (const marker of layout.markers) {
+      const g = d.createElementNS(svgNs, 'g');
+      g.setAttribute('class', 'step-callout');
+      g.setAttribute('data-step-number', String(marker.number));
+
+      const line = d.createElementNS(svgNs, 'line');
+      line.setAttribute('class', 'step-callout-line');
+      line.setAttribute('x1', String(marker.cx));
+      line.setAttribute('y1', String(marker.cy));
+      line.setAttribute('x2', String(marker.edgeX));
+      line.setAttribute('y2', String(marker.edgeY));
+      g.appendChild(line);
+
+      const circle = d.createElementNS(svgNs, 'circle');
+      circle.setAttribute('class', 'step-callout-dot');
+      circle.setAttribute('cx', String(marker.cx));
+      circle.setAttribute('cy', String(marker.cy));
+      circle.setAttribute('r', '13');
+      g.appendChild(circle);
+
+      const text = d.createElementNS(svgNs, 'text');
+      text.setAttribute('class', 'step-callout-num');
+      text.setAttribute('x', String(marker.cx));
+      text.setAttribute('y', String(marker.cy));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('dominant-baseline', 'central');
+      text.textContent = String(marker.number);
+      g.appendChild(text);
+
+      svg.appendChild(g);
+    }
+
+    stage.appendChild(svg);
+    figure.appendChild(stage);
+
+    const caption = d.createElement('figcaption');
+    caption.className = 'step-caption';
+    const parts = layout.markers.map((m) => `${m.number}. ${m.label}`);
+    if (asset.clientVersion) parts.push(`Client version: ${asset.clientVersion}`);
+    caption.textContent = parts.join(' \u00b7 ') || asset.alt || '';
+    figure.appendChild(caption);
+
+    return figure;
+  }
+
   function initBrowser() {
     if (typeof document === 'undefined') return;
     const $ = (id) => document.getElementById(id);
@@ -99,6 +246,17 @@
         item.textContent = action;
         return item;
       }));
+      const assetHost = $('guide-assets');
+      if (assetHost) {
+        const stepAssets = Array.isArray(step.assets) ? step.assets : [];
+        if (stepAssets.length) {
+          assetHost.replaceChildren(...stepAssets.map((a) => buildStepAssetFigure(a, document)).filter(Boolean));
+          assetHost.hidden = false;
+        } else {
+          assetHost.replaceChildren();
+          assetHost.hidden = true;
+        }
+      }
       $('guide-see').textContent = step.whatYouShouldSee;
       $('guide-done').textContent = step.done;
       const source = $('guide-source');
@@ -191,6 +349,8 @@
     detectStepPlatform,
     filterSteps,
     isStepStale,
-    freshnessNotice
+    freshnessNotice,
+    describeMarginCallouts,
+    buildStepAssetFigure
   });
 });

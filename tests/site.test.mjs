@@ -6,6 +6,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { scanImageMetadata, validateStepsManifest } from '../scripts/check-step-assets.mjs';
+import { evaluateStepsFreshness, extractLearnUpdatedAt } from '../scripts/check-steps-freshness.mjs';
 
 const stepsApi = createRequire(import.meta.url)('../site/steps/steps.js');
 
@@ -259,4 +261,71 @@ test('text-first guides cover all seven spec topics, detect platform ambiguity, 
   assert.match(policy[1], /connect-src 'self'/);
   assert.doesNotMatch(policy[1], /https:\/\//);
   assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)[^>]*>|<style|\sstyle="|\son[a-z]+\s*=/i);
+  assert.match(html, /id="guide-assets"/);
+  assert.match(html, /Microsoft's published screenshot permissions, with no endorsement implied/);
+});
+
+test('margin callout overlays keep markers outside the screenshot frame, and asset/freshness checks refuse EXIF and PNG text chunks', () => {
+  const layout = stepsApi.describeMarginCallouts({
+    width: 600,
+    height: 400,
+    callouts: [
+      { number: 1, side: 'left', offset: 0.25, label: 'Select signal icon' },
+      { number: 2, side: 'top', offset: 0.5, label: 'Open Details' },
+      { number: 3, side: 'right', offset: 0.75, label: 'Read Transport protocol' },
+      { number: 4, side: 'bottom', offset: 0.5, label: 'Check Round-trip time' }
+    ]
+  });
+  assert.equal(layout.innerX, 44);
+  assert.equal(layout.innerY, 44);
+  assert.equal(layout.totalWidth, 688);
+  assert.equal(layout.totalHeight, 488);
+  assert.equal(layout.markers.length, 4);
+  for (const m of layout.markers) {
+    const insideX = m.cx > layout.innerX && m.cx < layout.innerX + layout.innerWidth;
+    const insideY = m.cy > layout.innerY && m.cy < layout.innerY + layout.innerHeight;
+    assert.equal(insideX && insideY, false, `marker ${m.number} sits in the outer margin, never over the screenshot`);
+  }
+
+  // Clean minimal PNG (header + IHDR + IEND) passes metadata scan
+  const cleanPng = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00,
+    0x90, 0x77, 0x53, 0xde,
+    0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
+  ]);
+  assert.equal(scanImageMetadata(cleanPng, '.png').clean, true);
+
+  // PNG with a tEXt chunk is refused
+  const dirtyPng = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    0x00, 0x00, 0x00, 0x04, 0x74, 0x45, 0x58, 0x74, 0x41, 0x42, 0x43, 0x44, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
+  ]);
+  const dirtyPngRes = scanImageMetadata(dirtyPng, '.png');
+  assert.equal(dirtyPngRes.clean, false);
+  assert.match(dirtyPngRes.findings.join(' '), /tEXt/);
+
+  // JPEG with APP1 (EXIF) is refused
+  const dirtyJpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x04, 0x00, 0x00, 0xff, 0xd9]);
+  assert.equal(scanImageMetadata(dirtyJpeg, '.jpg').clean, false);
+
+  // Animated GIF is refused
+  assert.equal(scanImageMetadata(Buffer.from('GIF89a', 'ascii'), '.gif').clean, false);
+
+  const manifest = JSON.parse(readFileSync(join(site, 'steps', 'steps.json'), 'utf8'));
+  const validManifest = validateStepsManifest(manifest, join(site, 'steps'));
+  assert.equal(validManifest.ok, true);
+
+  assert.equal(
+    extractLearnUpdatedAt('<html><head><meta name="updated_at" content="2026-10-27 12:00 PM"></head></html>'),
+    '2026-10-27'
+  );
+  const freshRes = evaluateStepsFreshness(manifest, {
+    nowIso: '2026-11-01',
+    upstreamDates: { 'https://learn.microsoft.com/en-us/windows-app/troubleshoot': '2026-10-30' }
+  });
+  assert.equal(freshRes.ok, false);
+  assert.ok(freshRes.movedSteps.some((s) => s.id === 'avd.logs.windows'));
 });
