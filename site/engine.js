@@ -620,6 +620,100 @@
     };
   }
 
+  // Optional v2a server probe client helpers (docs/spec.md section 10, off by default unless a pack configures probe).
+  async function probeEchoTiming(echoUrl, {
+    fetchImpl = globalThis.fetch,
+    getEntriesByName = (href) => (globalThis.performance && globalThis.performance.getEntriesByName ? globalThis.performance.getEntriesByName(href, 'resource') : []),
+    now = () => (globalThis.performance ? globalThis.performance.now() : Date.now())
+  } = {}) {
+    const started = now();
+    try {
+      const response = await fetchImpl(echoUrl, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store',
+        referrerPolicy: 'no-referrer'
+      });
+      const elapsed = Math.max(0, Math.round(now() - started));
+      let body = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+      const authentic = Boolean(response && response.ok && body && body.schema === 'avd-linecheck-echo/v1' && body.ok === true);
+      const entries = getEntriesByName ? getEntriesByName(echoUrl) : [];
+      const entry = entries && entries.length ? entries[entries.length - 1] : null;
+      const span = (a, b) => (entry && Number.isFinite(entry[a]) && Number.isFinite(entry[b]) && entry[b] >= entry[a] && entry[b] > 0)
+        ? Math.round(entry[b] - entry[a])
+        : null;
+
+      return {
+        status: authentic ? 'reached' : 'intercepted',
+        proxyIntercepted: !authentic,
+        httpStatus: response ? response.status : null,
+        totalMs: elapsed,
+        dnsMs: span('domainLookupStart', 'domainLookupEnd'),
+        tcpMs: span('connectStart', 'connectEnd'),
+        tlsMs: entry && Number.isFinite(entry.secureConnectionStart) && entry.secureConnectionStart > 0
+          ? span('secureConnectionStart', 'connectEnd')
+          : null,
+        ttfbMs: span('requestStart', 'responseStart')
+      };
+    } catch {
+      return {
+        status: 'blocked',
+        proxyIntercepted: false,
+        httpStatus: null,
+        totalMs: null,
+        dnsMs: null,
+        tcpMs: null,
+        tlsMs: null,
+        ttfbMs: null
+      };
+    }
+  }
+
+  async function measureUpload(sinkUrl, {
+    bytes = 1048576,
+    fetchImpl = globalThis.fetch,
+    now = () => (globalThis.performance ? globalThis.performance.now() : Date.now())
+  } = {}) {
+    const clampedBytes = Math.max(1024, Math.min(16 * 1024 * 1024, Number(bytes) || 1048576));
+    const payload = new Uint8Array(clampedBytes);
+    const started = now();
+    try {
+      const response = await fetchImpl(sinkUrl, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store',
+        referrerPolicy: 'no-referrer',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: payload
+      });
+      const durationMs = Math.max(1, Math.round(now() - started));
+      if (!response || !response.ok) {
+        return { status: 'blocked', bytes: 0, durationMs, mbps: null };
+      }
+      const body = await response.json();
+      if (!body || body.schema !== 'avd-linecheck-sink/v1' || body.ok !== true) {
+        return { status: 'blocked', bytes: 0, durationMs, mbps: null };
+      }
+      const received = Number(body.receivedBytes) || clampedBytes;
+      const mbps = Number(((received * 8) / (durationMs / 1000) / 1e6).toFixed(1));
+      return {
+        status: 'measured',
+        bytes: received,
+        durationMs,
+        mbps
+      };
+    } catch {
+      return { status: 'blocked', bytes: 0, durationMs: null, mbps: null };
+    }
+  }
+
   return {
     MAX_SUFFICIENCY_MBPS,
     isPublicHost,
@@ -639,6 +733,8 @@
     measureParallelSamples,
     measureUntil,
     measureDownload,
-    runProbePhases
+    runProbePhases,
+    probeEchoTiming,
+    measureUpload
   };
 });

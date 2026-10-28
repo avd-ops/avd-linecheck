@@ -2,10 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { handleProbeRequest, MAX_SINK_BYTES } from '../probe/worker.js';
 
 const {
   measureSamples, measureParallelSamples, measureUntil, measureDownload,
-  runProbePhases, probeOnce, sameOriginDnsHint, detectWebClientCapabilities
+  runProbePhases, probeOnce, sameOriginDnsHint, detectWebClientCapabilities,
+  probeEchoTiming, measureUpload
 } = createRequire(import.meta.url)('../site/engine.js');
 
 test('sample runner times successful probes and counts stalls without calling them passes', async () => {
@@ -271,4 +273,72 @@ test('detectWebClientCapabilities checks WebCodecs, Clipboard, and Multi-screen 
     clipboard: false,
     multiScreen: false
   });
+});
+
+test('v2a server probe Worker handles /echo with Timing-Allow-Origin and /sink up to 16 MiB without storing or reflecting identity', async () => {
+  const preflight = await handleProbeRequest(new Request('https://probe.example/echo', { method: 'OPTIONS' }));
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('Timing-Allow-Origin'), '*');
+  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), '*');
+
+  const echoRes = await handleProbeRequest(new Request('https://probe.example/echo', { method: 'GET' }));
+  assert.equal(echoRes.status, 200);
+  assert.equal(echoRes.headers.get('Timing-Allow-Origin'), '*');
+  assert.equal(echoRes.headers.get('Cache-Control'), 'no-store');
+  const echoBody = await echoRes.json();
+  assert.deepEqual(echoBody, { schema: 'avd-linecheck-echo/v1', ok: true, status: 200 });
+
+  const overRes = await handleProbeRequest(new Request('https://probe.example/sink', {
+    method: 'POST',
+    headers: { 'Content-Length': String(MAX_SINK_BYTES + 1) },
+    body: new Uint8Array(16)
+  }));
+  assert.equal(overRes.status, 413);
+
+  let clock = 0;
+  const echoTiming = await probeEchoTiming('https://probe.example/echo', {
+    fetchImpl: (url, init) => {
+      clock += 48;
+      return handleProbeRequest(new Request(url, init));
+    },
+    getEntriesByName: () => [{
+      domainLookupStart: 2,
+      domainLookupEnd: 11,
+      connectStart: 11,
+      secureConnectionStart: 21,
+      connectEnd: 35,
+      requestStart: 35,
+      responseStart: 47
+    }],
+    now: () => clock
+  });
+  assert.equal(echoTiming.status, 'reached');
+  assert.equal(echoTiming.proxyIntercepted, false);
+  assert.equal(echoTiming.dnsMs, 9);
+  assert.equal(echoTiming.tcpMs, 24);
+  assert.equal(echoTiming.tlsMs, 14);
+  assert.equal(echoTiming.ttfbMs, 12);
+
+  // Proxy block page returning 200 HTML instead of avd-linecheck-echo/v1 is flagged as intercepted
+  const intercepted = await probeEchoTiming('https://probe.example/echo', {
+    fetchImpl: async () => new Response('<html>Blocked by corporate proxy</html>', { status: 200 }),
+    getEntriesByName: () => [],
+    now: () => 20
+  });
+  assert.equal(intercepted.status, 'intercepted');
+  assert.equal(intercepted.proxyIntercepted, true);
+
+  let upClock = 0;
+  const upload = await measureUpload('https://probe.example/sink', {
+    bytes: 524288,
+    fetchImpl: (url, init) => {
+      upClock += 250;
+      return handleProbeRequest(new Request(url, init));
+    },
+    now: () => upClock
+  });
+  assert.equal(upload.status, 'measured');
+  assert.equal(upload.bytes, 524288);
+  assert.equal(upload.durationMs, 250);
+  assert.equal(upload.mbps, 16.8);
 });
