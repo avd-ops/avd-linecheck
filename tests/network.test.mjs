@@ -2,13 +2,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { handleProbeRequest, MAX_SINK_BYTES } from '../probe/worker.js';
 
+const require = createRequire(import.meta.url);
+const { handleProbeRequest, MAX_SINK_BYTES } = require('../probe/worker.js');
 const {
   measureSamples, measureParallelSamples, measureUntil, measureDownload,
   runProbePhases, probeOnce, sameOriginDnsHint, detectWebClientCapabilities,
   probeEchoTiming, measureUpload
-} = createRequire(import.meta.url)('../site/engine.js');
+} = require('../site/engine.js');
 
 test('sample runner times successful probes and counts stalls without calling them passes', async () => {
   let clock = 0;
