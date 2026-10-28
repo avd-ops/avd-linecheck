@@ -85,6 +85,16 @@ progress{width:100%;height:8px;margin-top:var(--space-3);accent-color:var(--acce
 .step-controls label{display:block;font-weight:600;margin-bottom:var(--space-1)}
 .step-controls select{min-height:var(--tap)}
 .step-banner{padding:var(--space-3) var(--space-4);border-left:3px solid var(--caution);background:var(--caution-soft);margin-bottom:var(--space-3)}
+.step-assets{margin-block:var(--space-4)}
+.step-figure{margin:0 0 var(--space-4);padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--sunken)}
+.step-margin-stage{position:relative;max-width:100%}
+.step-still{display:block;width:calc(100% - 88px);height:auto;margin:44px auto;border:1px solid var(--line);background:var(--surface)}
+.step-margin-svg{display:block;width:100%;height:auto}
+.step-inner-frame{fill:none;stroke:var(--line);stroke-width:1.5}
+.step-callout-line{stroke:var(--accent);stroke-width:2}
+.step-callout-dot{fill:var(--accent);stroke:var(--focus);stroke-width:2}
+.step-callout-num{fill:var(--surface);font:700 12px var(--display)}
+.step-caption{margin-top:var(--space-2);font-size:.88rem;color:var(--muted)}
 .step-nav{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4)}
 [hidden]{display:none!important}
 @media (max-width:30rem){
