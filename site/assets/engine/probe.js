@@ -1,4 +1,4 @@
-/* avd-ops portal engine v1.1.0: probe.js. Personal project, not for production, as is; not affiliated with the author's employer or Microsoft. MIT.
+/* avd-ops portal engine v1.2.0: probe.js. Personal project, not for production, as is; not affiliated with the author's employer or Microsoft. MIT.
    The one engine file that makes requests: timing no-cors requests to the hosts a portal gives it (avd-landing-zone
    decision 0003). The response is opaque; only the elapsed time is used. fetch, the clock, timers, Date.now and
    Math.random are injected (opts.env), so tests run it on a scripted network. Defaults are the deployment portal's:

@@ -6,9 +6,9 @@
   "workload": "avd",
   "endpointSource": {
     "repo": "avd-ops/avd-assess",
-    "path": "endpoints.json",
-    "commit": "d8b6983b6fd947eb795cd5945e30e54cf1dc194b",
-    "sha256": "eb8a1aed7f3c285006c05164825bbfc061c2a3fc94a58f1a68d8c6098f699472"
+    "path": "contracts/cloud-environments.json",
+    "commit": "ef8a99ed5d5cdef0dc663c8b22e2cac1b8006788",
+    "sha256": "b5db3d30d9c8e9cfdc0a44995682a45283a22436e91c63c94ba920fa4f05d021"
   },
   "endpointIds": [],
   "hosts": [
@@ -21,49 +21,25 @@
       "claim": "ref:avd-gov-required-fqdn#client-list"
     },
     {
-      "id": "gov.graph",
-      "host": "graph.microsoft.us",
-      "purpose": "service",
-      "required": false,
-      "port": 443,
-      "claim": "ref:avd-gov-required-fqdn#client-list"
-    },
-    {
-      "id": "gov.connection-center",
-      "host": "windows.cloud.microsoft",
+      "id": "gov.rdweb",
+      "host": "rdweb.wvd.azure.us",
       "purpose": "connection-center",
       "required": true,
       "port": 443,
       "claim": "ref:avd-gov-required-fqdn#client-list"
     },
     {
-      "id": "gov.fwlink",
-      "host": "go.microsoft.com",
-      "purpose": "links-and-docs",
-      "required": false,
+      "id": "gov.rdbroker",
+      "host": "rdbroker.wvd.azure.us",
+      "purpose": "service",
+      "required": true,
       "port": 443,
       "claim": "ref:avd-gov-required-fqdn#client-list"
     },
     {
-      "id": "gov.shortener",
-      "host": "aka.ms",
-      "purpose": "links-and-docs",
-      "required": false,
-      "port": 443,
-      "claim": "ref:avd-gov-required-fqdn#client-list"
-    },
-    {
-      "id": "gov.docs",
-      "host": "learn.microsoft.com",
-      "purpose": "links-and-docs",
-      "required": false,
-      "port": 443,
-      "claim": "ref:avd-gov-required-fqdn#client-list"
-    },
-    {
-      "id": "gov.privacy",
-      "host": "privacy.microsoft.com",
-      "purpose": "links-and-docs",
+      "id": "gov.graph",
+      "host": "graph.microsoft.us",
+      "purpose": "service",
       "required": false,
       "port": 443,
       "claim": "ref:avd-gov-required-fqdn#client-list"

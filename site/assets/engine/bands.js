@@ -1,4 +1,4 @@
-/* avd-ops portal engine v1.1.0: bands.js. Personal project, not for production, as is; not affiliated with the author's employer or Microsoft. MIT.
+/* avd-ops portal engine v1.2.0: bands.js. Personal project, not for production, as is; not affiliated with the author's employer or Microsoft. MIT.
    Bands and worst-of verdicts from a portal's own threshold table. Pure. Fails closed: no answer is never a pass. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./core.js'));
