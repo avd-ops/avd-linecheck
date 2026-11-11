@@ -65,11 +65,22 @@ test('Azure US Government and workload packs (Windows 365, Teams VDI, Microsoft 
   assert.doesNotThrow(() => validatePack(m365, endpointMap, regionMap.regions));
 
   assert.equal(avdGov.cloud, 'gov');
+  assert.equal(avdGov.endpointSource.path, 'contracts/cloud-environments.json');
+  assert.equal(avdGov.endpointSource.commit, 'ef8a99ed5d5cdef0dc663c8b22e2cac1b8006788');
   assert.equal(avdGov.shortpathNote.claim, 'ref:configure-rdp-shortpath#turn-public-cloud-only');
   assert.ok(avdGov.hosts.some((h) => h.host === 'login.microsoftonline.us' && h.required));
+  assert.ok(avdGov.hosts.some((h) => h.host === 'rdweb.wvd.azure.us' && h.required));
+  assert.ok(avdGov.hosts.some((h) => h.host === 'rdbroker.wvd.azure.us' && h.required));
   assert.ok(avdGov.hosts.some((h) => h.host === 'graph.microsoft.us'));
   assert.ok(avdGov.notTested.includes('gov.wvd'));
   assert.deepEqual(regionMap.avdGovTargetRegionIds, ['usgovvirginia', 'usgovarizona', 'usgovtexas']);
+
+  const govTargets = probeTargets(avdGov, endpointMap).map((t) => t.host);
+  const govRegionalHosts = regionsForCloud(regionMap, 'gov').map((r) => regionalHost(regionMap, r));
+  for (const host of [...govTargets, ...govRegionalHosts]) {
+    assert.doesNotMatch(host, /\.(com|windows\.net)$/i, `avd-gov must probe zero .com or .windows.net hosts (${host})`);
+    assert.match(host, /\.(azure\.us|usgovcloudapi\.net|microsoft\.us|microsoftonline\.us)$/i, `avd-gov host must be US Government (${host})`);
+  }
 
   assert.ok(w365.hosts.some((h) => h.host === 'windows.cloud.microsoft' && h.required));
   assert.ok(w365.hosts.some((h) => h.host === 'windows365.microsoft.com' && h.required));
