@@ -5,7 +5,7 @@ Part of [avd-ops](https://avd-ops.dev/), the open toolkit for Azure Virtual Desk
 A one-button network check for people who work on a virtual desktop. Open a link, press one button, and get a plain-language verdict about the network you are on, plus a result you can hand to your helpdesk. It runs in your browser with no sign-in or keys. When you run it, the listed probe hosts receive ordinary network request metadata; the result itself is never uploaded. Azure Virtual Desktop is the first set of checks; the engine is generic, so anyone with a hosted desktop can add their own.
 
 > [!WARNING]
-> **Personal project. Research and learning only. Not for production. No warranty.**
+> **Community research project. Use at your own risk. No warranty.**
 >
 > - This is my own personal project, built on my own time **for research and learning**. It is **not affiliated with, endorsed by or supported by my employer**, Liquidware or Microsoft, and it does not represent their views, products or guidance. Microsoft product names are used only to describe what is tested.
 > - **Do not rely on it for production decisions.** A browser can only measure part of a connection, and the page says what it could not measure.
