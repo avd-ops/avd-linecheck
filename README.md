@@ -12,6 +12,16 @@ A one-button network check for people who work on a virtual desktop. Open a link
 > - It is provided **"as is", without warranty of any kind**, under the [MIT License](LICENSE). You use it at your own risk.
 > - **Contributions and forks are welcome and encouraged.** See [Contributing](#contributing).
 
+## How it connects
+
+| Direction | Repo | Relationship |
+|---|---|---|
+| Front door | [avd-ops](https://github.com/avd-ops/avd-ops#readme) | Overview, [repo page](https://avd-ops.dev/docs/repos/avd-linecheck.html), and [portal](https://avd-ops.app/linecheck/) |
+| Standards | [avd-assess](https://github.com/avd-ops/avd-assess#readme) | Supplies pinned `endpoints.json` and RTT bands (`methods/network.md`) |
+| Sibling | [avd-current-state](https://github.com/avd-ops/avd-current-state#readme) | Companion local log bundle specification |
+| Sibling | [avd-remediate](https://github.com/avd-ops/avd-remediate#readme) | Consumes exported network check bundles during triage |
+| Sibling | [avd-landing-zone](https://github.com/avd-ops/avd-landing-zone#readme) | Shares the `avd-ops` portal engine (`pe-v1.1.0`) and region probe pattern |
+
 ## Status
 
 **The v0 and v1 static portal is implemented on the shared `avd-ops` design system (`ds-v2.7.0`) and portal engine (`pe-v1.2.0`).** The four-step wizard (`Run check`, `Verdict`, `Add context`, `Share or read`), generic, AVD Commercial (`avd`), Azure US Government (`avd-gov`), Windows 365 (`w365`), Microsoft Teams VDI (`teams`), and Microsoft 365 Core (`m365`) packs, multi-workload toggles, phased probe execution with deadlines, cold connection setup timing (`setupMs`) and same-origin DNS hints, web client capability checks (`WebCodecs` H.264/AV1, Clipboard API, Multi-screen API), vantage and proxy/tunnel caveats, helpdesk link builder, before/after run comparison, user context (sentiment, symptoms, in-browser window capture, private `comments.txt`), assessment intake export (`avd-assess-user-network/v1`), and text-first guided steps are in [`site/`](site/). Spikes S1 through S4 are recorded in [spikes/README.md](spikes/README.md). No guided-step screenshots or recordings are included yet. The design baseline is [docs/spec.md](docs/spec.md). Its optional v2 server probe and listing on avd-ops.dev remain out of scope. Section 17's companion log bundle is specified for [avd-current-state](https://github.com/avd-ops/avd-current-state); [the local collector spec](https://github.com/avd-ops/avd-current-state/blob/main/docs/local-collector-spec.md) and [PR #40](https://github.com/avd-ops/avd-current-state/pull/40) describe the design, not an implementation.
