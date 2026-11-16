@@ -24,9 +24,9 @@ const textFiles = files().filter((p) => !binary.includes(extname(p).toLowerCase(
 const anchors = (md) => new Set([...md.replace(/```[\s\S]*?```/g, '').matchAll(/^#{1,6}\s+(.+)$/gm)]
   .map(([, h]) => h.trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s/g, '-')));
 
-test('README keeps the research-only warning', () => {
+test('README keeps the community research warning', () => {
   const readme = read('README.md');
-  assert.match(readme, /Personal project\. Research and learning only\. Not for production\. No warranty\./);
+  assert.match(readme, /Community research project\. Use at your own risk\. No warranty\./);
   assert.match(readme, /not affiliated with, endorsed by or supported by my employer/);
   assert.match(readme, /Contributions and forks are welcome and encouraged/);
   assert.match(readme, /\[MIT License\]\(LICENSE\)/);
