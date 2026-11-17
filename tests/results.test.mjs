@@ -10,7 +10,7 @@ const exporter = require('../site/export.js');
 const {
   findingSentence, rttFinding, overallVerdict, reachabilityFinding,
   rankRegions, regionRating, visibleRegions, detectVantage,
-  detectProxyCaveats, relayGeographyNote, cloudShortpathNote, summarizeMetrics, sentences, labels
+  detectProxyCaveats, relayGeographyNote, cloudShortpathNote, azureLocalShortpathNote, summarizeMetrics, sentences, labels
 } = verdict;
 const { hasCustomHosts, makeExport, makeIntakeEntry, parseSharedResult, compareResults, validateSentiment } = exporter;
 
@@ -226,6 +226,14 @@ test('cloudShortpathNote returns cited Azure US Government Shortpath note only f
   assert.ok(note);
   assert.equal(note.id, 'gov-shortpath-turn');
   assert.ok(note.claims.includes('ref:configure-rdp-shortpath#turn-public-cloud-only'));
+});
+
+test('azureLocalShortpathNote returns local-gateway Shortpath note only for azure-local', () => {
+  assert.equal(azureLocalShortpathNote('azure'), null);
+  const note = azureLocalShortpathNote('azure-local');
+  assert.ok(note);
+  assert.equal(note.id, 'azure-local-shortpath');
+  assert.ok(note.claims.includes('ref:avd-azure-local#multisession-and-shortpath'));
 });
 
 test('compareResults computes RTT/jitter deltas and blocked/caveat transitions', () => {

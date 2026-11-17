@@ -163,6 +163,18 @@
     };
   }
 
+  // Azure Local (Decision 0023): brokering goes through Azure while RDP Shortpath UDP data-plane traffic can stay on the local LAN/WAN.
+  function azureLocalShortpathNote(hostPlacement = 'azure') {
+    if (hostPlacement !== 'azure-local') return null;
+    return {
+      id: 'azure-local-shortpath',
+      hostPlacement: 'azure-local',
+      claim: 'ref:avd-azure-local#multisession-and-shortpath',
+      claims: ['ref:avd-azure-local#multisession-and-shortpath'],
+      sentence: 'For Azure Local host pools, AVD brokering goes through Azure while RDP Shortpath UDP data-plane traffic can stay on your local LAN/WAN; verify local-gateway UDP reachability with the native client or server probe.'
+    };
+  }
+
   // Spec 6.4: relay geography note when the closest TURN-capable region is far (> 150 ms).
   function relayGeographyNote(regionResults, avdTargetRegionIds = []) {
     const allow = new Set(Array.isArray(avdTargetRegionIds) ? avdTargetRegionIds : []);
@@ -457,6 +469,7 @@
     detectCaveats,
     detectProxyCaveats: detectCaveats,
     cloudShortpathNote,
+    azureLocalShortpathNote,
     relayGeographyNote,
     overallVerdict,
     rankRegions,
